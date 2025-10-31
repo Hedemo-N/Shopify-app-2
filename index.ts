@@ -5,6 +5,9 @@ import dotenv from "dotenv";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { memorySessionStorage } from "./memorySessionStorage.js";
 import authRoutes from "./auth.js"; // lägg till .js här
+import ordersRoute from "./api/orders.js";
+
+
 
 dotenv.config();
 
@@ -23,7 +26,7 @@ const shopify = shopifyApi({
 
 
 app.get("/", (req, res) => res.send("🚀 Blixt Delivery Shopify App"));
-
+app.use("/api", ordersRoute);
 app.use("/", authRoutes);
 
 export default app;

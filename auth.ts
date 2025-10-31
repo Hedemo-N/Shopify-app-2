@@ -76,9 +76,10 @@ router.get("/auth/callback", async (req, res) => {
 } catch (err) {
   console.error("❌ Unexpected Supabase error:", err);
 }
-    if (!res.headersSent) {
-  res.send("App installed successfully! You can close this tab.");
+   if (!res.headersSent) {
+  return res.end("✅ App installed successfully! You can close this tab.");
 }
+
 
   } catch (error) {
     console.error("❌ Auth callback error:", error);
