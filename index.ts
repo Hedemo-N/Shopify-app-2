@@ -3,7 +3,7 @@ import "@shopify/shopify-api/adapters/node";
 import express from "express";
 import dotenv from "dotenv";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
-
+import { memorySessionStorage } from "./memorySessionStorage.js";
 import authRoutes from "./auth.js"; // lägg till .js här
 
 dotenv.config();
@@ -18,6 +18,7 @@ const shopify = shopifyApi({
   hostName: process.env.SHOPIFY_APP_URL!.replace(/https?:\/\//, ""),
   apiVersion: ApiVersion.July24, // ✅ korrekt enum
   isEmbeddedApp: false,
+  sessionStorage: memorySessionStorage,
 });
 
 
