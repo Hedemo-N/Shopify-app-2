@@ -3,6 +3,7 @@ import express from "express";
 import dotenv from "dotenv";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { memorySessionStorage } from "./memorySessionStorage.js";
+import { supabase } from "./supabaseClient.js"
 
 dotenv.config();
 
@@ -54,7 +55,31 @@ router.get("/auth/callback", async (req, res) => {
     console.log("Shop:", shop);
     console.log("Access token:", accessToken);
 
-    res.send("App installed successfully! You can close this tab.");
+    try {
+  const { data, error } = await supabase
+    .from("shopify_shops")
+    .upsert(
+      {
+        shop: shop,
+        access_token: accessToken,
+        installed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "shop" }
+    );
+
+  if (error) {
+    console.error("❌ Supabase insert error:", error);
+  } else {
+    console.log("✅ Token sparad i Supabase:", data);
+  }
+} catch (err) {
+  console.error("❌ Unexpected Supabase error:", err);
+}
+    if (!res.headersSent) {
+  res.send("App installed successfully! You can close this tab.");
+}
+
   } catch (error) {
     console.error("❌ Auth callback error:", error);
     res.status(500).send("Auth callback failed");

@@ -12,9 +12,11 @@
   "description": "",
   "dependencies": {
     "@shopify/shopify-api": "^12.1.0",
+    "@supabase/supabase-js": "^2.78.0",
     "@types/express": "^5.0.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "supabase": "^2.54.11",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
