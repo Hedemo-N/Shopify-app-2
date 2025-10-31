@@ -25,6 +25,5 @@ app.get("/", (req, res) => res.send("🚀 Blixt Delivery Shopify App"));
 
 app.use("/", authRoutes);
 
-app.listen(PORT, () =>
-  console.log(`✅ Server running on http://localhost:${PORT}`)
-);
+export default app;
+
