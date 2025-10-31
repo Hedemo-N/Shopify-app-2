@@ -27,9 +27,10 @@ router.post("/api/shipping-rates", async (req, res) => {
       .single();
 
     // fallbackvärden
-    const home2h = (profile?.pris_hem2h ?? 99) * 100;
-    const homeEvening = (profile?.pris_hemkvall ?? 65) * 100;
-    const ombud = (profile?.pris_ombud ?? 45) * 100;
+ const home2h = Math.round((profile?.pris_hem2h ?? 99) * 100);
+    const homeEvening = Math.round((profile?.pris_hemkvall ?? 65) * 100);
+    const ombud = Math.round((profile?.pris_ombud ?? 45) * 100);
+
 
     // Skicka tillbaka rates till Shopify
     const rates = [
