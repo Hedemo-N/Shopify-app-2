@@ -3,12 +3,14 @@ import express from "express";
 import dotenv from "dotenv";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { memorySessionStorage } from "./memorySessionStorage.js";
-import { supabase } from "./supabaseClient.js"
+import { supabase } from "./supabaseClient.js";
+import fetch from "node-fetch"; // 👈 för att kunna anropa Shopify API
 
 dotenv.config();
 
 const router = express.Router();
 
+// --- Shopify init ---
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
   apiSecretKey: process.env.SHOPIFY_API_SECRET!,
@@ -19,7 +21,7 @@ const shopify = shopifyApi({
   sessionStorage: memorySessionStorage,
 });
 
-// Start auth
+// --- 1️⃣ Start auth flow ---
 router.get("/auth", async (req, res) => {
   try {
     const shop = req.query.shop as string;
@@ -40,7 +42,33 @@ router.get("/auth", async (req, res) => {
   }
 });
 
-// Callback after auth
+// --- 2️⃣ Register shipping carrier (funktion) ---
+const registerCarrier = async (shop: string, token: string): Promise<void> => {
+
+  try {
+    const res = await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        carrier_service: {
+          name: "Blixt Delivery",
+          callback_url: `${process.env.SHOPIFY_APP_URL}/api/shipping-rates`,
+          service_discovery: true,
+        },
+      }),
+    });
+
+    const data = await res.json();
+    console.log("📦 Carrier service registered:", data);
+  } catch (err) {
+    console.error("❌ Failed to register carrier:", err);
+  }
+};
+
+// --- 3️⃣ Auth callback ---
 router.get("/auth/callback", async (req, res) => {
   try {
     const callback = await shopify.auth.callback({
@@ -48,42 +76,41 @@ router.get("/auth/callback", async (req, res) => {
       rawResponse: res,
     });
 
-    const accessToken = callback.session.accessToken;
+    const accessToken = callback.session.accessToken!;
     const shop = callback.session.shop;
 
     console.log("✅ Auth success:");
     console.log("Shop:", shop);
     console.log("Access token:", accessToken);
 
-    try {
-  const { data, error } = await supabase
-    .from("shopify_shops")
-    .upsert(
-      {
-        shop: shop,
-        access_token: accessToken,
-        installed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "shop" }
-    );
+    // --- Spara till Supabase ---
+    const { data, error } = await supabase
+      .from("shopify_shops")
+      .upsert(
+        {
+          shop,
+          access_token: accessToken,
+          installed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "shop" }
+      );
 
-  if (error) {
-    console.error("❌ Supabase insert error:", error);
-  } else {
-    console.log("✅ Token sparad i Supabase:", data);
-  }
-} catch (err) {
-  console.error("❌ Unexpected Supabase error:", err);
-}
-   if (!res.headersSent) {
-  return res.end("✅ App installed successfully! You can close this tab.");
-}
+    if (error) console.error("❌ Supabase insert error:", error);
+    else console.log("✅ Token sparad i Supabase:", data);
 
+    // --- Registrera frakt-callback automatiskt ---
+    await registerCarrier(shop, accessToken);
 
+    // --- Klart ---
+    if (!res.headersSent) {
+      return res.status(200).send("✅ App installerad och Blixt Delivery aktiverad i fraktval!");
+    }
   } catch (error) {
     console.error("❌ Auth callback error:", error);
-    res.status(500).send("Auth callback failed");
+    if (!res.headersSent) {
+      res.status(500).send("Auth callback failed");
+    }
   }
 });
 

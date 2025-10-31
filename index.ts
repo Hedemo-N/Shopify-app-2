@@ -6,6 +6,10 @@ import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { memorySessionStorage } from "./memorySessionStorage.js";
 import authRoutes from "./auth.js"; // lägg till .js här
 import ordersRoute from "./api/orders.js";
+import shippingRatesRoutes from "./api/shipping-rates.js";
+
+
+
 
 
 
@@ -28,6 +32,8 @@ const shopify = shopifyApi({
 app.get("/", (req, res) => res.send("🚀 Blixt Delivery Shopify App"));
 app.use("/api", ordersRoute);
 app.use("/", authRoutes);
+app.use(express.json());
+app.use("/", shippingRatesRoutes);
 
 export default app;
 
