@@ -5,6 +5,7 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
 import { getCoordinatesFromMapbox } from "../../utils/MapboxGeocoding.js";
 
+
 const router = express.Router();
 
 // 🧭 Typer

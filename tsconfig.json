@@ -1,44 +1,23 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    // File Layout
-    // "rootDir": "./src",
-    // "outDir": "./dist",
-
-    // Environment Settings
-    // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
-    "target": "esnext",
-    "types": [],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
-
-    // Other Outputs
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-
-    // Stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-
-    // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
-
-    // Recommended Options
+    /* ======= Basinställningar ======= */
+    "target": "ES2022",
+    "module": "NodeNext",                 // ✅ måste matcha moduleResolution
+    "moduleResolution": "NodeNext",       // för ESM
+    "noEmit": true,                       // vi låter Vercel kompilera, krävs för allowImportingTsExtensions
+    "allowImportingTsExtensions": true,   // tillåt .js-importer
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
     "strict": true,
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
     "skipLibCheck": true,
-  }
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* ======= För React/JSX (valfritt) ======= */
+    "jsx": "react-jsx"
+  },
+
+  /* ======= Vilka mappar TS ska läsa ======= */
+  "include": ["api", "routes", "utils", "src"],
+  "exclude": ["node_modules"]
 }
