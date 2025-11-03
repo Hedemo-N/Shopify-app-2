@@ -42,7 +42,7 @@ router.get("/auth", async (req, res) => {
   }
 });
 
-// --- 2️⃣ Register shipping carrier (funktion) ---
+// --- 2️⃣ Register shipping carrier ---
 const registerCarrier = async (shop: string, token: string): Promise<void> => {
   try {
     const res = await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
@@ -101,8 +101,8 @@ router.get("/auth/callback", async (req, res) => {
     // --- Registrera frakt-callback automatiskt ---
     await registerCarrier(shop, accessToken);
 
-    // --- Registrera webhook för nya ordrar ---
-    await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
+    // --- Registrera webhook för orderuppdatering (istället för create) ---
+    const webhookResponse = await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
       method: "POST",
       headers: {
         "X-Shopify-Access-Token": accessToken,
@@ -110,16 +110,16 @@ router.get("/auth/callback", async (req, res) => {
       },
       body: JSON.stringify({
         webhook: {
-          topic: "orders/create",
+          topic: "orders/updated",
           address: `${process.env.SHOPIFY_APP_URL}/api/webhooks/orders-create`,
           format: "json",
         },
       }),
     });
 
-    console.log("🔔 Webhook 'orders/create' registrerad!");
+    const webhookData = await webhookResponse.json();
+    console.log("🔔 Webhook registrerad (orders/updated):", webhookData);
 
-    // --- Klart ---
     if (!res.headersSent) {
       return res.status(200).send("✅ App installerad, Blixt Delivery aktiv och webhook skapad!");
     }
