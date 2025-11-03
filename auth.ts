@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { memorySessionStorage } from "./memorySessionStorage.js";
 import { supabase } from "./supabaseClient.js";
-import fetch from "node-fetch"; // 👈 för att kunna anropa Shopify API
+import fetch from "node-fetch";
 
 dotenv.config();
 
@@ -44,7 +44,6 @@ router.get("/auth", async (req, res) => {
 
 // --- 2️⃣ Register shipping carrier (funktion) ---
 const registerCarrier = async (shop: string, token: string): Promise<void> => {
-
   try {
     const res = await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
       method: "POST",
@@ -102,9 +101,27 @@ router.get("/auth/callback", async (req, res) => {
     // --- Registrera frakt-callback automatiskt ---
     await registerCarrier(shop, accessToken);
 
+    // --- Registrera webhook för nya ordrar ---
+    await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        webhook: {
+          topic: "orders/create",
+          address: `${process.env.SHOPIFY_APP_URL}/api/webhooks/orders-create`,
+          format: "json",
+        },
+      }),
+    });
+
+    console.log("🔔 Webhook 'orders/create' registrerad!");
+
     // --- Klart ---
     if (!res.headersSent) {
-      return res.status(200).send("✅ App installerad och Blixt Delivery aktiverad i fraktval!");
+      return res.status(200).send("✅ App installerad, Blixt Delivery aktiv och webhook skapad!");
     }
   } catch (error) {
     console.error("❌ Auth callback error:", error);
