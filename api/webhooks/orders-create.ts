@@ -24,21 +24,31 @@ router.post("/api/webhooks/orders-create", express.raw({ type: "application/json
     const order = JSON.parse(body.toString());
 
     console.log("🧾 Ny order från Shopify:", order.name);
+const { data: shopRow } = await supabase
+  .from("shopify_shops")
+  .select("user_id")
+  .eq("shop", order.source_name)
+  .single();
+
+const userId = shopRow?.user_id ?? null;
 
     // --- Spara till Supabase ---
     const { error } = await supabase.from("orders").insert([
-      {
-        shop: order?.source_name,
-        order_id: order?.id,
-        customer_name: `${order?.shipping_address?.first_name ?? ""} ${order?.shipping_address?.last_name ?? ""}`,
-        customer_address: order?.shipping_address?.address1 ?? "",
-        postal_code: order?.shipping_address?.zip ?? "",
-        delivery_method: order?.shipping_lines?.[0]?.title ?? "",
-        total_price: order?.total_price,
-        status: order?.financial_status ?? "pending",
-        created_at: new Date().toISOString(),
-      },
-    ]);
+  {
+    order_id: order.id,
+    name: `${order.shipping_address?.first_name ?? ""} ${order.shipping_address?.last_name ?? ""}`,
+    address1: order.shipping_address?.address1 ?? "",
+    postalnumber: order.shipping_address?.zip ?? "",
+    city: order.shipping_address?.city ?? "",
+    phone: order.shipping_address?.phone ?? "",
+    order_type: "hemleverans",
+    status: "paid",
+    total_price: order.total_price,
+    ordercreatedtime: new Date().toISOString(),
+    user_id: userId,
+  },
+]);
+
 
     if (error) {
       console.error("❌ Supabase insert error:", error);
