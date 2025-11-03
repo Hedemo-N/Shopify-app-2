@@ -1,17 +1,12 @@
-
 import "@shopify/shopify-api/adapters/node";
 import express from "express";
 import dotenv from "dotenv";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { memorySessionStorage } from "./memorySessionStorage.js";
-import authRoutes from "./auth.js"; // lägg till .js här
+import authRoutes from "./auth.js";
 import ordersRoute from "./api/orders.js";
 import shippingRatesRoutes from "./api/shipping-rates.js";
-
-
-
-
-
+import ordersCreateWebhook from "./api/webhooks/orders-create.js";
 
 dotenv.config();
 
@@ -23,17 +18,19 @@ const shopify = shopifyApi({
   apiSecretKey: process.env.SHOPIFY_API_SECRET!,
   scopes: process.env.SHOPIFY_SCOPES!.split(","),
   hostName: process.env.SHOPIFY_APP_URL!.replace(/https?:\/\//, ""),
-  apiVersion: ApiVersion.July24, // ✅ korrekt enum
+  apiVersion: ApiVersion.July24,
   isEmbeddedApp: false,
   sessionStorage: memorySessionStorage,
 });
 
-
 app.get("/", (req, res) => res.send("🚀 Blixt Delivery Shopify App"));
+
+// 💡 Viktigt: Lägg webhooken före express.json()
+app.use("/", ordersCreateWebhook);
+
+app.use(express.json());
 app.use("/api", ordersRoute);
 app.use("/", authRoutes);
-app.use(express.json());
 app.use("/", shippingRatesRoutes);
 
 export default app;
-
