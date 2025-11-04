@@ -178,41 +178,54 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
     // 👇 Hämta paketskåp om antal > 0
  // 👇 Hämta paketskåp om antal > 0
 if (boxCount > 0) {
+  console.log(`📦 Försöker hämta ${boxCount} paketskåp för postnummer ${postcode}`);
   const location = await getCoordinatesFromMapbox(postcode);
+  console.log("📍 Hämtade koordinater:", location);
+
   if (location) {
-    const { data: boxes } = await supabase.rpc("get_closest_boxes", {
+    const { data: boxes, error } = await supabase.rpc("get_closest_boxes", {
       lat: location.latitude,
       lng: location.longitude,
       count: boxCount,
     });
 
+    if (error) {
+      console.error("❌ Fel vid hämtning av paketskåp från Supabase RPC:", error);
+    }
 
-  if (Array.isArray(boxes) && boxes.length > 0) {
-  boxes.forEach((box, index) => {
-    rates.push({
-      service_name: `📦 Paketskåp #${index + 1}`,
-      service_code: `blixt_box_${index + 1}`,
-      total_price: String(ombud),
-      currency: "SEK",
-      description: box.address || "Paketskåp i närheten",
-      min_delivery_date: now.toISOString(),
-      max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
-    });
-  });
-} else {
-  // 👇 Fallback om inga paketskåp hittades
-  rates.push({
-    service_name: "📦 Blixt Ombud/Paketskåp",
-    service_code: "blixt_ombud",
-    total_price: String(ombud),
-    currency: "SEK",
-    description: "Leverans till närmaste paketskåp",
-    min_delivery_date: now.toISOString(),
-    max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
-  });
-}
+    if (Array.isArray(boxes) && boxes.length > 0) {
+      console.log(`📦 Hittade ${boxes.length} paketskåp`);
+      boxes.forEach((box, index) => {
+        console.log(`➡️ Skåp #${index + 1}:`, box);
+        rates.push({
+          service_name: `📦 Paketskåp #${index + 1}`,
+          service_code: `blixt_box_${index + 1}`,
+          total_price: String(ombud),
+          currency: "SEK",
+          description: box.address || "Paketskåp i närheten",
+          min_delivery_date: now.toISOString(),
+          max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
+        });
+      });
+    } else {
+      console.warn("⚠️ Inga paketskåp hittades – lägger till fallback-ombud");
+      rates.push({
+        service_name: "📦 Blixt Ombud/Paketskåp",
+        service_code: "blixt_ombud",
+        total_price: String(ombud),
+        currency: "SEK",
+        description: "Leverans till närmaste paketskåp",
+        min_delivery_date: now.toISOString(),
+        max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
+      });
+    }
+  } else {
+    console.error("❌ Kunde inte hämta koordinater för postnummer:", postcode);
+  }
 
-      }
+
+
+      
     }
 
     console.log(`📬 Shopify callback från ${shopDomain}:`, rates);
