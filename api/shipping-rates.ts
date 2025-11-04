@@ -187,19 +187,31 @@ if (boxCount > 0) {
     });
 
 
-        if (Array.isArray(boxes)) {
-          boxes.forEach((box, index) => {
-            rates.push({
-              service_name: `📦 Paketskåp #${index + 1}`,
-              service_code: `blixt_box_${index + 1}`,
-              total_price: String(ombud),
-              currency: "SEK",
-              description: box.address || "Paketskåp i närheten",
-              min_delivery_date: now.toISOString(),
-              max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
-            });
-          });
-        }
+  if (Array.isArray(boxes) && boxes.length > 0) {
+  boxes.forEach((box, index) => {
+    rates.push({
+      service_name: `📦 Paketskåp #${index + 1}`,
+      service_code: `blixt_box_${index + 1}`,
+      total_price: String(ombud),
+      currency: "SEK",
+      description: box.address || "Paketskåp i närheten",
+      min_delivery_date: now.toISOString(),
+      max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
+    });
+  });
+} else {
+  // 👇 Fallback om inga paketskåp hittades
+  rates.push({
+    service_name: "📦 Blixt Ombud/Paketskåp",
+    service_code: "blixt_ombud",
+    total_price: String(ombud),
+    currency: "SEK",
+    description: "Leverans till närmaste paketskåp",
+    min_delivery_date: now.toISOString(),
+    max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
+  });
+}
+
       }
     }
 
