@@ -1,13 +1,12 @@
 import express from "express";
 import type { Request, Response } from "express";
 import { supabase } from "../supabaseClient.js";
+import { getCoordinatesFromMapbox } from "../utils/MapboxGeocoding.js";
 
 const router = express.Router();
 
-// 🕙 öppettider
 const OPENING_HOUR = 10;
 const CLOSING_HOUR = 18;
-
 // ✅ tillåtna postnummer (förkortad lista – lägg till hela din)
 const ALLOWED_POSTCODES = [
   "411 01","411 02","411 03","411 04","411 05","411 06","411 07","411 08","411 09","411 10",
@@ -87,7 +86,6 @@ const toOre = (v: number | string | null | undefined, fallback: number): number 
   return Math.round(n * 100);
 };
 
-// Typdefinition för varje rate (för bättre intellisense)
 interface ShopifyRate {
   service_name: string;
   service_code: string;
@@ -98,10 +96,9 @@ interface ShopifyRate {
   max_delivery_date?: string;
 }
 
-// 🚀 Huvudrouten
 router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<void> => {
   try {
-    const payload = req.body as any; // Shopify skickar JSON utan fast schema
+    const payload = req.body as any;
     const headers = req.headers as Record<string, string | undefined>;
 
     const shopDomain: string | null =
@@ -115,7 +112,6 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
       return;
     }
 
-    // 🏬 Hämta butiksinfo
     const { data: shop } = await supabase
       .from("shopify_shops")
       .select("user_id")
@@ -124,16 +120,15 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("pris_ombud, pris_hemkvall, pris_hem2h")
+      .select("pris_ombud, pris_hemkvall, pris_hem2h, number_box")
       .eq("_id", shop?.user_id)
       .single();
 
-    // 💰 priser (öre)
-    const home2h: number = toOre(profile?.pris_hem2h ?? 99, 9900);
-    const homeEvening: number = toOre(profile?.pris_hemkvall ?? 65, 6500);
-    const ombud: number = toOre(profile?.pris_ombud ?? 45, 4500);
+    const home2h = toOre(profile?.pris_hem2h ?? 99, 9900);
+    const homeEvening = toOre(profile?.pris_hemkvall ?? 65, 6500);
+    const ombud = toOre(profile?.pris_ombud ?? 45, 4500);
+    const boxCount = Number(profile?.number_box) || 0;
 
-    // 📬 postnummerfilter
     const postcode = (payload?.rate?.destination?.postal_code || "").replace(/\s/g, "");
     if (!ALLOWED_POSTCODES.includes(postcode)) {
       console.log(`⛔ Postnummer ${postcode} ej tillåtet`);
@@ -141,7 +136,6 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
       return;
     }
 
-    // ⏰ leveransfönster
     const now = new Date();
     let slotStart: Date;
     let slotEnd: Date;
@@ -160,7 +154,6 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
       expressDescription = `Cykelleverans vid öppning (${pad(slotStart.getHours())}–${pad(slotEnd.getHours())})`;
     }
 
-    // 🚚 Bygg rates
     const rates: ShopifyRate[] = [
       {
         service_name: "🚴‍♂️ Blixt Hem inom 2h",
@@ -180,16 +173,35 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
         min_delivery_date: slotStart.toISOString(),
         max_delivery_date: slotEnd.toISOString(),
       },
-      {
-        service_name: "📦 Blixt Ombud/Paketskåp",
-        service_code: "blixt_ombud",
-        total_price: String(ombud),
-        currency: "SEK",
-        description: "Leverans till närmaste paketskåp",
-        min_delivery_date: now.toISOString(),
-        max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
-      },
     ];
+
+    // 👇 Hämta paketskåp om antal > 0
+ // 👇 Hämta paketskåp om antal > 0
+if (boxCount > 0) {
+  const location = await getCoordinatesFromMapbox(postcode);
+  if (location) {
+    const { data: boxes } = await supabase.rpc("get_closest_boxes", {
+      lat: location.latitude,
+      lng: location.longitude,
+      count: boxCount,
+    });
+
+
+        if (Array.isArray(boxes)) {
+          boxes.forEach((box, index) => {
+            rates.push({
+              service_name: `📦 Paketskåp #${index + 1}`,
+              service_code: `blixt_box_${index + 1}`,
+              total_price: String(ombud),
+              currency: "SEK",
+              description: box.address || "Paketskåp i närheten",
+              min_delivery_date: now.toISOString(),
+              max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
+            });
+          });
+        }
+      }
+    }
 
     console.log(`📬 Shopify callback från ${shopDomain}:`, rates);
     res.status(200).json({ rates });
