@@ -221,6 +221,8 @@ if (boxCount > 0) {
 
       closest.forEach((box, index) => {
         console.log(`➡️ Skåp #${index + 1}:`, box);
+        console.log("✅ Nu använder vi ombud_name i service_name");
+
         rates.push({
           service_name: `📦 ${box.ombud_name || "Paketskåp"}`,
           service_code: `blixt_box_${index + 1}`,
@@ -233,6 +235,8 @@ if (boxCount > 0) {
       });
     } else {
       console.warn("⚠️ Inga paketskåp hittades – lägger till fallback-ombud");
+      console.log("✅ Nu använder vi ombud_name i service_name");
+
       rates.push({
         service_name: "📦 Blixt Ombud/Paketskåp",
         service_code: "blixt_ombud",
