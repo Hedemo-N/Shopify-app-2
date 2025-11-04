@@ -222,7 +222,7 @@ if (boxCount > 0) {
       closest.forEach((box, index) => {
         console.log(`➡️ Skåp #${index + 1}:`, box);
         rates.push({
-          service_name: `📦 Paketskåp #${index + 1}`,
+          service_name: `📦 ${box.ombud_name || "Paketskåp"}`,
           service_code: `blixt_box_${index + 1}`,
           total_price: String(ombud),
           currency: "SEK",
