@@ -3,65 +3,8 @@ import crypto from "crypto";
 import { supabase } from "../../supabaseClient.js";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
-import { getCoordinatesFromMapbox } from "../../utils/MapboxGeocoding.js";
-
 
 const router = express.Router();
-
-// 🧭 Typer
-type Coordinates = { latitude: number; longitude: number };
-type Ombud = {
-  id: string;
-  ombud_adress: string;
-  ombud_name: string;
-  ombud_telefon: string;
-};
-
-// 🔹 Hjälpfunktion för närmaste ombud
-async function fetchPaketskåp(): Promise<Ombud[]> {
-  const { data, error } = await supabase
-    .from("paketskåp_ombud")
-    .select("id, ombud_adress, lat_long, ombud_name, ombud_telefon");
-  if (error) {
-    console.error("Fel vid hämtning av paketskåp:", error);
-    return [];
-  }
-  return data || [];
-}
-
-function haversineDistance(coord1: Coordinates, coord2: Coordinates): number {
-  const R = 6371e3;
-  const toRad = (v: number) => (v * Math.PI) / 180;
-  const dLat = toRad(coord2.latitude - coord1.latitude);
-  const dLon = toRad(coord2.longitude - coord1.longitude);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(coord1.latitude)) *
-      Math.cos(toRad(coord2.latitude)) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-async function findNearestOmbud(customerAddress: string): Promise<Ombud | null> {
-  const customerCoords = await getCoordinatesFromMapbox(customerAddress);
-  if (!customerCoords) return null;
-
-  const list = await fetchPaketskåp();
-  let nearest: Ombud | null = null;
-  let minDist = Infinity;
-
-  for (const paket of list) {
-    const coords = await getCoordinatesFromMapbox(paket.ombud_adress);
-    if (!coords) continue;
-    const dist = haversineDistance(customerCoords, coords);
-    if (dist < minDist) {
-      minDist = dist;
-      nearest = paket;
-    }
-  }
-
-  return nearest;
-}
 
 // 🔹 Hjälpfunktion för PDF
 async function generateLabelPDF(order: any): Promise<Uint8Array> {
@@ -143,10 +86,14 @@ router.post(
 
       const userId = shopRow?.user_id ?? null;
 
-      const orderType =
-        order.shipping_lines?.[0]?.title?.toLowerCase().includes("ombud")
-          ? "ombud"
-          : "hemleverans";
+      const shippingCode = order.shipping_lines?.[0]?.code ?? "";
+      let orderType = "hemleverans";
+      let ombudIndex: number | null = null;
+
+      if (shippingCode.startsWith("blixt_box_")) {
+        orderType = "ombud";
+        ombudIndex = parseInt(shippingCode.replace("blixt_box_", ""), 10) - 1;
+      }
 
       const { data: newOrder, error: createError } = await supabase
         .from("orders")
@@ -174,19 +121,24 @@ router.post(
 
       let savedOrder = newOrder[0];
 
-      // 🔹 Om ombud: hitta närmaste paketskåp
-      if (orderType === "ombud") {
-        const fullAddress = `${savedOrder.address1}, ${savedOrder.postalnumber} ${savedOrder.city}`;
-        const nearest = await findNearestOmbud(fullAddress);
+      // 🔹 Om ombud: koppla rätt paketskåp från kod
+      if (orderType === "ombud" && ombudIndex !== null) {
+        const { data: allBoxes, error: ombudError } = await supabase
+          .from("paketskåp_ombud")
+          .select("id, ombud_name, ombud_adress, ombud_telefon")
+          .order("id", { ascending: true });
 
-        if (nearest) {
+        if (ombudError || !Array.isArray(allBoxes) || !allBoxes[ombudIndex]) {
+          console.warn("⚠️ Kunde inte hitta valt paketskåp");
+        } else {
+          const selected = allBoxes[ombudIndex];
           await supabase
             .from("orders")
             .update({
-              ombud_postbox_id: nearest.id,
-              ombud_name: nearest.ombud_name,
-              ombud_adress: nearest.ombud_adress,
-              ombud_telefon: nearest.ombud_telefon,
+              ombud_postbox_id: selected.id,
+              ombud_name: selected.ombud_name,
+              ombud_adress: selected.ombud_adress,
+              ombud_telefon: selected.ombud_telefon,
               status: "kommande",
             })
             .eq("id", savedOrder.id);
