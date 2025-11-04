@@ -183,26 +183,50 @@ if (boxCount > 0) {
   console.log("📍 Hämtade koordinater:", location);
 
   if (location) {
-    const { data: boxes, error } = await supabase.rpc("get_closest_boxes", {
-      lat: location.latitude,
-      lng: location.longitude,
-      count: boxCount,
-    });
+    const { data: allBoxes, error } = await supabase
+      .from("paketskåp_ombud")
+      .select("id, ombud_name, ombud_adress, ombud_telefon, lat_long");
 
     if (error) {
-      console.error("❌ Fel vid hämtning av paketskåp från Supabase RPC:", error);
-    }
+      console.error("❌ Fel vid hämtning av paketskåp:", error);
+    } else if (Array.isArray(allBoxes) && allBoxes.length > 0) {
+      const parseLatLng = (text: string): { lat: number; lng: number } | null => {
+        const [lat, lng] = text?.split(",")?.map(Number);
+        return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+      };
 
-    if (Array.isArray(boxes) && boxes.length > 0) {
-      console.log(`📦 Hittade ${boxes.length} paketskåp`);
-      boxes.forEach((box, index) => {
+      const toDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371e3;
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(Δφ/2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      };
+
+    const closest = allBoxes
+  .map((box) => {
+    const coords = parseLatLng(box.lat_long);
+    if (!coords) return null;
+    const distance = toDistance(location.latitude, location.longitude, coords.lat, coords.lng);
+    return { ...box, distance };
+  })
+  .filter((box): box is NonNullable<typeof box> => box !== null)
+  .sort((a, b) => a.distance - b.distance)
+  .slice(0, boxCount);
+
+
+      console.log(`📦 Hittade ${closest.length} närliggande paketskåp`);
+
+      closest.forEach((box, index) => {
         console.log(`➡️ Skåp #${index + 1}:`, box);
         rates.push({
           service_name: `📦 Paketskåp #${index + 1}`,
           service_code: `blixt_box_${index + 1}`,
           total_price: String(ombud),
           currency: "SEK",
-          description: box.address || "Paketskåp i närheten",
+          description: box.ombud_adress || "Paketskåp i närheten",
           min_delivery_date: now.toISOString(),
           max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
         });
@@ -222,6 +246,7 @@ if (boxCount > 0) {
   } else {
     console.error("❌ Kunde inte hämta koordinater för postnummer:", postcode);
   }
+
 
 
 
