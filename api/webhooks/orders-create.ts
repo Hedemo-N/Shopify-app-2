@@ -95,11 +95,24 @@ router.post(
         ombudIndex = parseInt(shippingCode.replace("blixt_box_", ""), 10) - 1;
       }
 
+      // 🔹 Kontrollera om order redan finns
+const { data: existingOrder } = await supabase
+  .from("orders")
+  .select("id")
+  .eq("shopify_order_id", order.id)
+  .maybeSingle();
+
+if (existingOrder) {
+  console.warn(`⚠️ Order ${order.name} finns redan – hoppar över skapande.`);
+  return res.status(200).send("Order already exists");
+}
+
       const { data: newOrder, error: createError } = await supabase
         .from("orders")
         .insert([
           {
             order_type: orderType,
+            shopify_order_id: order.id,
             name: `${order.shipping_address?.first_name ?? ""} ${order.shipping_address?.last_name ?? ""}`,
             address1: order.shipping_address?.address1 ?? "",
             postalnumber: order.shipping_address?.zip ?? "",
