@@ -119,16 +119,21 @@ router.post(
       const order = JSON.parse(body.toString());
       console.log("🧾 Ny order från Shopify:", order.name);
       console.log("📦 Full Shopify-order:", JSON.stringify(order, null, 2));
+      const shopDomain = req.get("X-Shopify-Shop-Domain"); // 👈 e.g. "hedens-skor.myshopify.com"
 
-      const { data: shopRow } = await supabase
-        .from("shopify_shops")
-        .select("user_id")
-        .eq("shop", order.source_name)
-        .single();
 
-      const userId = shopRow?.user_id ?? null;
+    const { data: shopRow, error: shopError } = await supabase
+  .from("shopify_shops")
+  .select("user_id")
+  .eq("shop", shopDomain)
+  .single();
 
-      console.log("🔗 Kopplad user_id från shopify_shops:", userId);
+if (shopError || !shopRow) {
+  console.warn("⚠️ Kunde inte hitta butik i shopify_shops för domän:", shopDomain);
+}
+
+const userId = shopRow?.user_id ?? null;
+console.log("🔗 Kopplad user_id från shopify_shops:", userId);
 
       const shippingCode = order.shipping_lines?.[0]?.code ?? "";
       let orderType = "hemleverans";
