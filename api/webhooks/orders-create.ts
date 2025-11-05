@@ -5,6 +5,8 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
 import { readFile } from "fs/promises";
 import path from "path";
+import { Buffer } from "buffer";
+
 
 // ...
 
@@ -23,12 +25,14 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
   // 🟡 Generera QR-kod och bädda in
   let qrImage;
   try {
-    const qrDataUrl = await QRCode.toDataURL(String(order.id));
-    if (!qrDataUrl.startsWith("data:image/png")) {
-      throw new Error("QR-data är inte PNG");
-    }
-    const qrBytes = await fetch(qrDataUrl).then((res) => res.arrayBuffer());
-    qrImage = await pdfDoc.embedPng(qrBytes);
+   const qrDataUrl = await QRCode.toDataURL(String(order.id));
+if (!qrDataUrl.startsWith("data:image/png")) {
+  throw new Error("QR-data är inte PNG");
+}
+const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
+const qrBytes = Uint8Array.from(Buffer.from(qrBase64, "base64"));
+qrImage = await pdfDoc.embedPng(qrBytes);
+
   } catch (err) {
     console.error("❌ Kunde inte skapa QR-kod som PNG:", err);
     throw err;
