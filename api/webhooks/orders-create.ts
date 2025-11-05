@@ -18,7 +18,7 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
   // 🟡 Generera QR-kod och bädda in
   let qrImage;
   try {
-    const qrDataUrl = await QRCode.toDataURL(order.order_id);
+    const qrDataUrl = await QRCode.toDataURL(String(order.id));
     if (!qrDataUrl.startsWith("data:image/png")) {
       throw new Error("QR-data är inte PNG");
     }
@@ -120,13 +120,15 @@ router.post(
 if (shippingCode.startsWith("blixt_box_")) {
   orderType = "ombud";
 
-  const boxId = parseInt(shippingCode.replace("blixt_box_", ""), 10);
-  const { data: allBoxes } = await supabase
-    .from("paketskåp_ombud")
-    .select("id, ombud_name, ombud_adress, ombud_telefon")
-    .order("id", { ascending: true });
+const boxId = parseInt(shippingCode.replace("blixt_box_", ""), 10);
+const { data: boxData } = await supabase
+  .from("paketskåp_ombud")
+  .select("id, ombud_name, ombud_adress, ombud_telefon")
+  .eq("id", boxId)
+  .single();
 
-  selectedBox = allBoxes?.[boxId - 1]; // se till att den stämmer!
+selectedBox = boxData;
+
 }
 
 
