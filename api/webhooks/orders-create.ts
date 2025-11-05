@@ -7,32 +7,59 @@ import QRCode from "qrcode";
 const router = express.Router();
 
 // 🔹 Hjälpfunktion för PDF
-async function generateLabelPDF(order: any): Promise<Uint8Array> {
+
+export async function generateLabelPDF(order: any): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([300, 400]);
   const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const pageWidth = 300;
   const pageHeight = 400;
 
-  const qrDataUrl = await QRCode.toDataURL(order.order_id);
-  const qrBytes = await fetch(qrDataUrl).then((res) => res.arrayBuffer());
-  const qrImage = await pdfDoc.embedPng(qrBytes);
+  // 🟡 Generera QR-kod och bädda in
+  let qrImage;
+  try {
+    const qrDataUrl = await QRCode.toDataURL(order.order_id);
+    if (!qrDataUrl.startsWith("data:image/png")) {
+      throw new Error("QR-data är inte PNG");
+    }
+    const qrBytes = await fetch(qrDataUrl).then((res) => res.arrayBuffer());
+    qrImage = await pdfDoc.embedPng(qrBytes);
+  } catch (err) {
+    console.error("❌ Kunde inte skapa QR-kod som PNG:", err);
+    throw err;
+  }
 
-  const logoUrl = `${process.env.SHOPIFY_APP_URL}/logo.png`;
-  const logoBytes = await fetch(logoUrl).then((res) => res.arrayBuffer());
-  const logoImage = await pdfDoc.embedPng(logoBytes);
+  // 🟡 Ladda logotyp och bädda in
+  let logoImage;
+  try {
+    const logoUrl = `${process.env.NEXT_PUBLIC_BASE_URL || ""}/logo.png`; // Anpassa efter frontend/backend
+    const logoBytes = await fetch(logoUrl).then((res) => res.arrayBuffer());
+    logoImage = await pdfDoc.embedPng(logoBytes);
+  } catch (err) {
+    console.error("❌ Kunde inte ladda logotyp som PNG:", err);
+    throw err;
+  }
+
   const logoDims = logoImage.scale(0.18);
 
-  page.drawText(`Order ID: ${order.order_id}`, { x: 20, y: 330, size: 18, font });
-  page.drawText(`Namn: ${order.name}`, { x: 20, y: 300, size: 14 });
-  page.drawText(`Adress: ${order.address1}`, { x: 20, y: 280, size: 14 });
-  page.drawText(`${order.postalnumber} ${order.city}`, { x: 20, y: 260, size: 14 });
-  page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 230, size: 14 });
-  page.drawText(`Leverans med: Blixt Delivery`, { x: 20, y: 200, size: 14 });
+  // 📄 Text och placering – beroende på leveranssätt
+  if (order.order_type === "hemleverans") {
+    page.drawText(`Order ID: ${order.order_id}`, { x: 20, y: 330, size: 18, font });
+    page.drawText(`Namn: ${order.name}`, { x: 20, y: 300, size: 14 });
+    page.drawText(`Adress: ${order.address1}`, { x: 20, y: 280, size: 14 });
+    page.drawText(`${order.postalnumber} ${order.city}`, { x: 20, y: 260, size: 14 });
+    page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 230, size: 14 });
+  } else {
+    page.drawText(`📦 Paketbox: ${order.ombud_name}`, { x: 20, y: 330, size: 14, font });
+    page.drawText(`Order ID: ${order.order_id}`, { x: 20, y: 300, size: 14 });
+    page.drawText(`Adress: ${order.ombud_adress}`, { x: 20, y: 280, size: 14 });
+    page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 250, size: 14 });
+  }
 
+  page.drawText(`Leverans med: Blixt Delivery`, { x: 20, y: 200, size: 14 });
   page.drawImage(logoImage, {
     x: (pageWidth - logoDims.width) / 2,
-    y: 60,
+    y: 80,
     width: logoDims.width,
     height: logoDims.height,
   });
@@ -53,8 +80,9 @@ async function generateLabelPDF(order: any): Promise<Uint8Array> {
     borderWidth: 3,
   });
 
-  return pdfDoc.save();
+  return await pdfDoc.save();
 }
+
 
 // 🔹 Webhook
 router.post(
