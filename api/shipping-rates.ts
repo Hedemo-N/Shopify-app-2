@@ -130,6 +130,11 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
     const boxCount = Number(profile?.number_box) || 0;
 
     const postcode = (payload?.rate?.destination?.postal_code || "").replace(/\s/g, "");
+    const street = payload?.rate?.destination?.address1 || "";
+const city = payload?.rate?.destination?.city || "";
+const country = payload?.rate?.destination?.country || "Sweden";
+const fullAddress = `${street}, ${postcode} ${city}, ${country}`;
+
     if (!ALLOWED_POSTCODES.includes(postcode)) {
       console.log(`⛔ Postnummer ${postcode} ej tillåtet`);
       res.status(200).json({ rates: [] });
@@ -179,7 +184,8 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
  // 👇 Hämta paketskåp om antal > 0
 if (boxCount > 0) {
   console.log(`📦 Försöker hämta ${boxCount} paketskåp för postnummer ${postcode}`);
-  const location = await getCoordinatesFromMapbox(`${postcode} Sweden`);
+  const location = await getCoordinatesFromMapbox(fullAddress);
+
 
   console.log("📍 Hämtade koordinater:", location);
 
