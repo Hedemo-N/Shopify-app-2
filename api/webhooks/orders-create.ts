@@ -116,12 +116,19 @@ router.post(
 
       const shippingCode = order.shipping_lines?.[0]?.code ?? "";
       let orderType = "hemleverans";
-      let ombudIndex: number | null = null;
+     let selectedBox = null;
+if (shippingCode.startsWith("blixt_box_")) {
+  orderType = "ombud";
 
-      if (shippingCode.startsWith("blixt_box_")) {
-        orderType = "ombud";
-        ombudIndex = parseInt(shippingCode.replace("blixt_box_", ""), 10) - 1;
-      }
+  const boxId = parseInt(shippingCode.replace("blixt_box_", ""), 10);
+  const { data: allBoxes } = await supabase
+    .from("paketskåp_ombud")
+    .select("id, ombud_name, ombud_adress, ombud_telefon")
+    .order("id", { ascending: true });
+
+  selectedBox = allBoxes?.[boxId - 1]; // se till att den stämmer!
+}
+
 
       // 🔹 Kontrollera om order redan finns
 const { data: existingOrder } = await supabase
@@ -163,55 +170,54 @@ if (existingOrder) {
       let savedOrder = newOrder[0];
 
       // 🔹 Om ombud: koppla rätt paketskåp från kod
-      if (orderType === "ombud" && ombudIndex !== null) {
-        const { data: allBoxes, error: ombudError } = await supabase
-          .from("paketskåp_ombud")
-          .select("id, ombud_name, ombud_adress, ombud_telefon")
-          .order("id", { ascending: true });
+if (orderType === "ombud" && selectedBox) {
+  await supabase
+    .from("orders")
+    .update({
+      ombud_postbox_id: selectedBox.id,
+      ombud_name: selectedBox.ombud_name,
+      ombud_adress: selectedBox.ombud_adress,
+      ombud_telefon: selectedBox.ombud_telefon,
+      status: "kommande",
+    })
+    .eq("id", savedOrder.id);
+}
 
-        if (ombudError || !Array.isArray(allBoxes) || !allBoxes[ombudIndex]) {
-          console.warn("⚠️ Kunde inte hitta valt paketskåp");
-        } else {
-          const selected = allBoxes[ombudIndex];
-          await supabase
-            .from("orders")
-            .update({
-              ombud_postbox_id: selected.id,
-              ombud_name: selected.ombud_name,
-              ombud_adress: selected.ombud_adress,
-              ombud_telefon: selected.ombud_telefon,
-              status: "kommande",
-            })
-            .eq("id", savedOrder.id);
-        }
-      }
+
 
       // 🔹 Generera PDF
-      const pdfBytes = await generateLabelPDF(savedOrder);
-      const fileName = `etikett-order-${savedOrder.id}.pdf`;
+  
 
-      const { error: uploadError } = await supabase.storage
-        .from("etiketter")
-        .upload(fileName, pdfBytes, {
-          contentType: "application/pdf",
-          upsert: true,
-        });
+const pdfBytes = await generateLabelPDF(order);
+const fileName = `etikett-order-${order.id}.pdf`;
 
-      if (uploadError) console.error("❌ Fel vid PDF-uppladdning:", uploadError);
+// 🔼 Ladda upp PDF till Supabase Storage
+const { error: uploadError } = await supabase.storage
+  .from("etiketter")
+  .upload(fileName, pdfBytes, {
+    contentType: "application/pdf",
+    upsert: true,
+  });
 
-      const { data: publicUrlData } = supabase.storage
-        .from("etiketter")
-        .getPublicUrl(fileName);
+if (uploadError) {
+  console.error("❌ Fel vid uppladdning av PDF:", uploadError);
+  return;
+}
 
-      const pdfUrl = publicUrlData?.publicUrl;
-      if (pdfUrl) {
-        await supabase
-          .from("orders")
-          .update({ pdf_url: pdfUrl })
-          .eq("id", savedOrder.id);
-      }
+// 🌐 Hämta publika länken till PDF
+const { data: publicUrlData } = supabase.storage
+  .from("etiketter")
+  .getPublicUrl(fileName);
 
-      console.log("✅ Order sparad och PDF genererad!");
+const pdfUrl = publicUrlData?.publicUrl;
+if (pdfUrl) {
+  await supabase
+    .from("orders")
+    .update({ pdf_url: pdfUrl })
+    .eq("id", order.id);
+  console.log("✅ PDF sparad och länk uppdaterad i databasen:", pdfUrl);
+}
+      // Svara till Shopify när allt är klart
       res.status(200).send("OK");
     } catch (err) {
       console.error("❌ Error i orders-create webhook:", err);
@@ -219,5 +225,6 @@ if (existingOrder) {
     }
   }
 );
+
 
 export default router;
