@@ -179,7 +179,8 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
  // 👇 Hämta paketskåp om antal > 0
 if (boxCount > 0) {
   console.log(`📦 Försöker hämta ${boxCount} paketskåp för postnummer ${postcode}`);
-  const location = await getCoordinatesFromMapbox(postcode);
+  const location = await getCoordinatesFromMapbox(`${postcode} Sweden`);
+
   console.log("📍 Hämtade koordinater:", location);
 
   if (location) {
