@@ -190,10 +190,11 @@ if (boxCount > 0) {
     if (error) {
       console.error("❌ Fel vid hämtning av paketskåp:", error);
     } else if (Array.isArray(allBoxes) && allBoxes.length > 0) {
-      const parseLatLng = (text: string): { lat: number; lng: number } | null => {
-        const [lat, lng] = text?.split(",")?.map(Number);
-        return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
-      };
+     const parseLatLng = (text: string): { lat: number; lng: number } | null => {
+  const [lng, lat] = text?.split(",")?.map(Number); // 🔁 OBS: byt plats här!
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+};
+
 
       const toDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
         const R = 6371e3;
