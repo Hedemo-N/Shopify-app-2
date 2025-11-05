@@ -195,11 +195,26 @@ if (orderType === "ombud" && selectedBox) {
     })
     .eq("id", savedOrder.id);
 }
+// 🔁 Hämta uppdaterad order med ombudsinformation
+const { data: updatedOrder, error: refetchError } = await supabase
+  .from("orders")
+  .select("*")
+  .eq("id", savedOrder.id)
+  .single();
+
+if (refetchError || !updatedOrder) {
+  console.error("❌ Kunde inte hämta uppdaterad order:", refetchError);
+  return res.status(500).send("Failed to fetch updated order");
+}
+
+savedOrder = updatedOrder; // ersätt gamla savedOrder med den fulla versionen
+
 
 
 
       // 🔹 Generera PDF
   
+console.log("📦 Fullständig order till PDF:", savedOrder);
 
 const pdfBytes = await generateLabelPDF(savedOrder);
 const fileName = `etikett-order-${savedOrder.id}.pdf`;
