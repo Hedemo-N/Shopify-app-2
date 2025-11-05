@@ -61,7 +61,7 @@ const logoBytes = await readFile(logoPath);
     page.drawText(`${order.postalnumber} ${order.city}`, { x: 20, y: 260, size: 14 });
     page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 230, size: 14 });
   } else {
-    page.drawText(`📦 Paketbox: ${order.ombud_name}`, { x: 20, y: 330, size: 14, font });
+    page.drawText(`Paketbox: ${order.ombud_name}`, { x: 20, y: 330, size: 14, font });
     page.drawText(`Order ID: ${order.order_id}`, { x: 20, y: 300, size: 14 });
     page.drawText(`Adress: ${order.ombud_adress}`, { x: 20, y: 280, size: 14 });
     page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 250, size: 14 });
