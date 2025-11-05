@@ -3,6 +3,11 @@ import crypto from "crypto";
 import { supabase } from "../../supabaseClient.js";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
+import { readFile } from "fs/promises";
+import path from "path";
+
+// ...
+
 
 const router = express.Router();
 
@@ -32,8 +37,10 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
   // 🟡 Ladda logotyp och bädda in
   let logoImage;
   try {
-    const logoUrl = `${process.env.NEXT_PUBLIC_BASE_URL || ""}/logo.png`; // Anpassa efter frontend/backend
-    const logoBytes = await fetch(logoUrl).then((res) => res.arrayBuffer());
+
+const logoPath = path.join(process.cwd(), "public", "logo.png");
+const logoBytes = await readFile(logoPath);
+
     logoImage = await pdfDoc.embedPng(logoBytes);
   } catch (err) {
     console.error("❌ Kunde inte ladda logotyp som PNG:", err);
@@ -119,17 +126,17 @@ router.post(
      let selectedBox = null;
 if (shippingCode.startsWith("blixt_box_")) {
   orderType = "ombud";
+  
+  const boxId = parseInt(shippingCode.replace("blixt_box_", ""), 10);
+  const { data: boxData } = await supabase
+    .from("paketskåp_ombud")
+    .select("id, ombud_name, ombud_adress, ombud_telefon")
+    .eq("id", boxId)
+    .single();
 
-const boxId = parseInt(shippingCode.replace("blixt_box_", ""), 10);
-const { data: boxData } = await supabase
-  .from("paketskåp_ombud")
-  .select("id, ombud_name, ombud_adress, ombud_telefon")
-  .eq("id", boxId)
-  .single();
-
-selectedBox = boxData;
-
+  selectedBox = boxData;
 }
+
 
 
       // 🔹 Kontrollera om order redan finns
@@ -190,8 +197,9 @@ if (orderType === "ombud" && selectedBox) {
       // 🔹 Generera PDF
   
 
-const pdfBytes = await generateLabelPDF(order);
-const fileName = `etikett-order-${order.id}.pdf`;
+const pdfBytes = await generateLabelPDF(savedOrder);
+const fileName = `etikett-order-${savedOrder.id}.pdf`;
+
 
 // 🔼 Ladda upp PDF till Supabase Storage
 const { error: uploadError } = await supabase.storage
@@ -214,9 +222,10 @@ const { data: publicUrlData } = supabase.storage
 const pdfUrl = publicUrlData?.publicUrl;
 if (pdfUrl) {
   await supabase
-    .from("orders")
-    .update({ pdf_url: pdfUrl })
-    .eq("id", order.id);
+  .from("orders")
+  .update({ pdf_url: pdfUrl })
+  .eq("id", savedOrder.id);
+
   console.log("✅ PDF sparad och länk uppdaterad i databasen:", pdfUrl);
 }
       // Svara till Shopify när allt är klart

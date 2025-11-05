@@ -238,10 +238,10 @@ return Number.isFinite(lat) && Number.isFinite(lng)
 
         rates.push({
           service_name: `📦 ${box.ombud_name || "Paketskåp"}`,
-          service_code: `blixt_box_${index + 1}`,
+          service_code: `blixt_box_${box.id}`,
           total_price: String(ombud),
           currency: "SEK",
-          description: box.ombud_adress || "Paketskåp i närheten",
+          description: box.ombud_adress,
           min_delivery_date: now.toISOString(),
           max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
         });
