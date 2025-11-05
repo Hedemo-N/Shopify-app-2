@@ -19,80 +19,82 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([300, 400]);
   const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
   const pageWidth = 300;
-  const pageHeight = 400;
-
-  // 🟡 Generera QR-kod och bädda in
-  let qrImage;
-  try {
-   const qrDataUrl = await QRCode.toDataURL(String(order.id));
-if (!qrDataUrl.startsWith("data:image/png")) {
-  throw new Error("QR-data är inte PNG");
-}
-const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
-const qrBytes = Uint8Array.from(Buffer.from(qrBase64, "base64"));
-qrImage = await pdfDoc.embedPng(qrBytes);
-
-  } catch (err) {
-    console.error("❌ Kunde inte skapa QR-kod som PNG:", err);
-    throw err;
-  }
-
-  // 🟡 Ladda logotyp och bädda in
-  let logoImage;
-  try {
-
-const logoPath = path.join(process.cwd(), "public", "logo.png");
-const logoBytes = await readFile(logoPath);
-
-    logoImage = await pdfDoc.embedPng(logoBytes);
-  } catch (err) {
-    console.error("❌ Kunde inte ladda logotyp som PNG:", err);
-    throw err;
-  }
-
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const logoBytes = await readFile(logoPath);
+  const logoImage = await pdfDoc.embedPng(logoBytes);
   const logoDims = logoImage.scale(0.18);
 
-  // 📄 Text och placering – beroende på leveranssätt
+  const qrDataUrl = await QRCode.toDataURL(order.order_id);
+  const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
+  const qrBytes = Uint8Array.from(Buffer.from(qrBase64, "base64"));
+  const qrImage = await pdfDoc.embedPng(qrBytes);
+
   if (order.order_type === "hemleverans") {
-    page.drawText(`Order ID: ${order.order_id}`, { x: 20, y: 330, size: 18, font });
-    page.drawText(`Namn: ${order.name}`, { x: 20, y: 300, size: 14 });
-    page.drawText(`Adress: ${order.address1}`, { x: 20, y: 280, size: 14 });
-    page.drawText(`${order.postalnumber} ${order.city}`, { x: 20, y: 260, size: 14 });
-    page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 230, size: 14 });
+    page.drawText("Order ID:", { x: 20, y: 350, size: 25, font });
+    page.drawText(`${order.order_id}`, { x: 20, y: 320, size: 25, font });
+
+    page.drawText(`Namn: ${order.name}`, { x: 20, y: 280, size: 15 });
+    page.drawText(`Adress: ${order.address1}`, { x: 20, y: 260, size: 15 });
+    page.drawText(`${order.postalnumber} ${order.city}`, { x: 20, y: 240, size: 15 });
+    page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 200, size: 15 });
+    page.drawText(`Leverans med:`, { x: 20, y: 170, size: 15 });
+    page.drawText(`Blixt Delivery`, { x: 20, y: 130, size: 25 });
+
+    page.drawImage(logoImage, {
+      x: (pageWidth - logoDims.width) / 2,
+      y: 100,
+      width: logoDims.width,
+      height: logoDims.height,
+    });
+
+    page.drawImage(qrImage, {
+      x: pageWidth - 200,
+      y: 15,
+      width: 100,
+      height: 100,
+    });
   } else {
-    page.drawText(`Paketbox: ${order.ombud_name}`, { x: 20, y: 330, size: 14, font });
-    page.drawText(`Order ID: ${order.order_id}`, { x: 20, y: 300, size: 14 });
-    page.drawText(`Adress: ${order.ombud_adress}`, { x: 20, y: 280, size: 14 });
-    page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 250, size: 14 });
+    page.drawText("Ombud/Paketbox", { x: 20, y: 350, size: 20, font });
+    page.drawText(`${order.ombud_name}`, { x: 20, y: 310, size: 20, font });
+
+    page.drawText("Order ID:", { x: 20, y: 275, size: 20, font });
+    page.drawText(`${order.order_id}`, { x: 20, y: 255, size: 20, font });
+
+    page.drawText(`Namn: ${order.name}`, { x: 20, y: 235, size: 15 });
+    page.drawText(`Adress: ${order.ombud_adress}`, { x: 20, y: 210, size: 15 });
+    page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 160, size: 15 });
+    page.drawText(`Leverans med:`, { x: 20, y: 135, size: 15 });
+    page.drawText(`Blixt Delivery`, { x: 20, y: 110, size: 25 });
+
+    page.drawImage(logoImage, {
+      x: (pageWidth - logoDims.width) / 2,
+      y: 100,
+      width: logoDims.width,
+      height: logoDims.height,
+    });
+
+    page.drawImage(qrImage, {
+      x: pageWidth - 200,
+      y: 15,
+      width: 80,
+      height: 80,
+    });
   }
-
-  page.drawText(`Leverans med: Blixt Delivery`, { x: 20, y: 200, size: 14 });
-  page.drawImage(logoImage, {
-    x: (pageWidth - logoDims.width) / 2,
-    y: 80,
-    width: logoDims.width,
-    height: logoDims.height,
-  });
-
-  page.drawImage(qrImage, {
-    x: pageWidth - 120,
-    y: 20,
-    width: 80,
-    height: 80,
-  });
 
   page.drawRectangle({
     x: 10,
     y: 10,
     width: pageWidth - 20,
-    height: pageHeight - 20,
+    height: 380,
     borderColor: rgb(0, 0, 0),
-    borderWidth: 3,
+    borderWidth: 4,
   });
 
   return await pdfDoc.save();
 }
+
 
 
 // 🔹 Webhook
@@ -116,6 +118,7 @@ router.post(
 
       const order = JSON.parse(body.toString());
       console.log("🧾 Ny order från Shopify:", order.name);
+      console.log("📦 Full Shopify-order:", JSON.stringify(order, null, 2));
 
       const { data: shopRow } = await supabase
         .from("shopify_shops")
@@ -124,6 +127,8 @@ router.post(
         .single();
 
       const userId = shopRow?.user_id ?? null;
+
+      console.log("🔗 Kopplad user_id från shopify_shops:", userId);
 
       const shippingCode = order.shipping_lines?.[0]?.code ?? "";
       let orderType = "hemleverans";
@@ -139,6 +144,7 @@ if (shippingCode.startsWith("blixt_box_")) {
     .single();
 
   selectedBox = boxData;
+
 }
 
 
@@ -165,7 +171,11 @@ if (existingOrder) {
             address1: order.shipping_address?.address1 ?? "",
             postalnumber: order.shipping_address?.zip ?? "",
             city: order.shipping_address?.city ?? "",
-            phone: order.shipping_address?.phone ?? "",
+            phone:
+            order.shipping_address?.phone ||
+            order.customer?.phone ||
+            order.phone ||
+            "",
             custom_field: order.note ?? "",
             user_id: userId,
             ordercreatedtime: new Date().toISOString(),
