@@ -191,10 +191,14 @@ if (boxCount > 0) {
     if (error) {
       console.error("❌ Fel vid hämtning av paketskåp:", error);
     } else if (Array.isArray(allBoxes) && allBoxes.length > 0) {
-     const parseLatLng = (text: string): { lat: number; lng: number } | null => {
-  const [lng, lat] = text?.split(",")?.map(Number); // 🔁 OBS: byt plats här!
-  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+    const parseLatLng = (text: string): { latitude: number; longitude: number } | null => {
+  const [lat, lng] = text?.split(",")?.map(Number);
+return Number.isFinite(lat) && Number.isFinite(lng)
+  ? { latitude: lat, longitude: lng }
+  : null;
+
 };
+
 
 
       const toDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -211,7 +215,14 @@ if (boxCount > 0) {
   .map((box) => {
     const coords = parseLatLng(box.lat_long);
     if (!coords) return null;
-    const distance = toDistance(location.latitude, location.longitude, coords.lat, coords.lng);
+
+    const distance = toDistance(
+      location.latitude,
+      location.longitude,
+      coords.latitude,
+      coords.longitude
+    );
+
     return { ...box, distance };
   })
   .filter((box): box is NonNullable<typeof box> => box !== null)
