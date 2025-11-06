@@ -3,8 +3,11 @@ import { Resend } from "resend";
 
 const router = express.Router();
 const resend = new Resend(process.env.BLIXT_SHOPIFY_MAIL!);
+console.log("🔐 MAIL API KEY finns?", Boolean(process.env.BLIXT_SHOPIFY_MAIL));
+
 
 router.post("/send-label-email", async (req: Request, res: Response) => {
+console.log("📩 POST /send-label-email anropad");
 
   const { to, labelUrl, orderId } = req.body;
 
@@ -14,7 +17,7 @@ router.post("/send-label-email", async (req: Request, res: Response) => {
 
   try {
     const response = await resend.emails.send({
-      from: "Blixt Leverans <noreply@din-domän.se>",
+      from: "noreply@blixtdelivery.se",
       to,
       subject: `Etikett för order ${orderId}`,
       html: `
@@ -27,9 +30,10 @@ router.post("/send-label-email", async (req: Request, res: Response) => {
 
     return res.status(200).json({ success: true, response });
   } catch (err: any) {
-    console.error("❌ Kunde inte skicka mail:", err);
-    return res.status(500).json({ message: "Fel vid mailutskick", error: err.message });
-  }
+  console.error("❌ Kunde inte skicka mail:", err);
+  res.status(500).json({ error: err.message, full: err });
+}
+
 });
 
 export default router;
