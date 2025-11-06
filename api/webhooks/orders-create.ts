@@ -265,7 +265,7 @@ const shopEmail = order?.contact_email || order?.email || order?.customer?.email
 
 if (pdfUrl && shopEmail) {
   try {
-    const emailRes = await fetch("https://blixt.app/api/webhooks/send-label-email", {
+    const emailRes = await fetch("https://shopify-app-2-delta.vercel.app/api/webhooks/send-label-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
