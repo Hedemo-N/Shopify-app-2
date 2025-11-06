@@ -8,7 +8,7 @@ console.log("🔐 MAIL API KEY finns?", Boolean(process.env.BLIXT_SHOPIFY_MAIL))
 router.post("/send-label-email", async (req: Request, res: Response) => {
   console.log("📩 POST /send-label-email anropad");
 
-  const { to, labelUrl, orderId } = req.body;
+  const { to, labelUrl, orderId, customerName } = req.body;
 
   if (!to || !labelUrl || !orderId) {
     return res.status(400).json({ message: "Saknar fält: to, labelUrl, orderId" });
@@ -25,9 +25,10 @@ router.post("/send-label-email", async (req: Request, res: Response) => {
       subject: `Etikett för order ${orderId}`,
       html: `
         <p>Hej!</p>
-        <p>Här är din fraktetikett för order <strong>${orderId}</strong> bifogad som PDF.</p>
+        <p>Här är din fraktetikett för order <strong>${orderId} till kund ${customerName}</strong>.</p>
+        <p><a href="${labelUrl}">Ladda ner etiketten (PDF)</a></p>
         <p>Vänliga hälsningar,<br />Blixt</p>
-      `,
+        `,
       attachments: [
         {
           filename: `etikett-${orderId}.pdf`,

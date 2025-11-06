@@ -272,7 +272,8 @@ if (pdfUrl && shopEmail) {
       body: JSON.stringify({
         to: shopEmail,
         labelUrl: pdfUrl,
-        orderId: savedOrder.id,
+        orderId: savedOrder.order_id,
+        customerName: savedOrder.name,
       }),
     });
 
