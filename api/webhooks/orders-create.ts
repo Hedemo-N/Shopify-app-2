@@ -124,7 +124,7 @@ router.post(
 
     const { data: shopRow, error: shopError } = await supabase
   .from("shopify_shops")
-  .select("user_id")
+  .select("user_id, email")
   .eq("shop", shopDomain)
   .single();
 
@@ -261,7 +261,8 @@ if (pdfUrl) {
   .eq("id", savedOrder.id);
 
   // 🔹 Skicka e-post med etiketten
-const shopEmail = order?.contact_email || order?.email || order?.customer?.email;
+const shopEmail = shopRow?.email;
+
 
 if (pdfUrl && shopEmail) {
   try {
