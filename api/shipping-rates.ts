@@ -243,7 +243,7 @@ return Number.isFinite(lat) && Number.isFinite(lng)
         console.log("✅ Nu använder vi ombud_name i service_name");
 
         rates.push({
-          service_name: `${index + 1} ${box.ombud_name} (${Math.round(box.distance)} m)`,
+          service_name: `BLIXT Cykelleverans ${index + 1} ${box.ombud_name} (${Math.round(box.distance)} m)`,
           service_code: `blixt_box_${box.id}`,
           total_price: String(ombud),
           currency: "SEK",

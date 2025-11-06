@@ -260,6 +260,28 @@ if (pdfUrl) {
   .update({ pdf_url: pdfUrl })
   .eq("id", savedOrder.id);
 
+  // 🔹 Skicka e-post med etiketten
+const shopEmail = order?.contact_email || order?.email || order?.customer?.email;
+
+if (pdfUrl && shopEmail) {
+  try {
+    const emailRes = await fetch("https://blixt.app/api/webhooks/send-label-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: shopEmail,
+        labelUrl: pdfUrl,
+        orderId: savedOrder.id,
+      }),
+    });
+
+    const result = await emailRes.json();
+    console.log("📧 E-post skickad med etikett:", result);
+  } catch (err) {
+    console.error("❌ Misslyckades skicka etikettmail:", err);
+  }
+}
+
   console.log("✅ PDF sparad och länk uppdaterad i databasen:", pdfUrl);
 }
       // Svara till Shopify när allt är klart
