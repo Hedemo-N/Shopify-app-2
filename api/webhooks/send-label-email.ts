@@ -4,7 +4,8 @@ import { Resend } from "resend";
 const router = express.Router();
 const resend = new Resend(process.env.BLIXT_SHOPIFY_MAIL!);
 
-router.post("/api/webhooks/send-label-email", async (req: Request, res: Response) => {
+router.post("/send-label-email", async (req: Request, res: Response) => {
+
   const { to, labelUrl, orderId } = req.body;
 
   if (!to || !labelUrl || !orderId) {

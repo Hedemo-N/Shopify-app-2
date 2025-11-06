@@ -33,6 +33,8 @@ app.use(express.json());
 app.use("/api", ordersRoute);
 app.use("/", authRoutes);
 app.use("/", shippingRatesRoutes);
-app.use(sendLabelEmailRouter);
+app.use("/api/webhooks", sendLabelEmailRouter);
+
+
 
 export default app;
