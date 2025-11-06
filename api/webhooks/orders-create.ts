@@ -69,7 +69,7 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
     page.drawText(`Blixt Delivery`, { x: 20, y: 110, size: 25 });
 
     page.drawImage(logoImage, {
-      x: (pageWidth - logoDims.width) / 2,
+      x: (480 - logoDims.width) / 2,
       y: 100,
       width: logoDims.width,
       height: logoDims.height,
