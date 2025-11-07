@@ -205,13 +205,14 @@ if (hasAvailableCourier) {
 
 // 💡 Lägg till kvällsleverans alltid (eller gör egen check om du vill)
 rates.push({
-  service_name: "🌱BLIXT Hemleverans kväll 17-22🌱",
+  service_name: cutoffEvening
+    ? "🌱BLIXT Hemleverans kväll 17–22 (Leverans idag!)🌱"
+    : "🌱BLIXT Hemleverans kväll 17–22🌱",
   service_code: "blixt_home_evening",
   total_price: String(homeEvening),
   currency: "SEK",
-  description: cutoffEvening
-    ? `Beställ före ${cutoffEvening} för leverans samma kväll`
-    : "Leverans samma kväll",
+  description: `Beställ före ${cutoffEvening} för leverans samma kväll`,
+
   min_delivery_date: slotStart.toISOString(),
   max_delivery_date: slotEnd.toISOString(),
 });
@@ -278,19 +279,19 @@ return Number.isFinite(lat) && Number.isFinite(lng)
       closest.forEach((box, index) => {
         console.log(`➡️ Skåp #${index + 1}:`, box);
         console.log("✅ Nu använder vi ombud_name i service_name");
+const deliveryTime = new Date(now.getTime() + 4 * 60 * 60 * 1000); // Ex: 4 timmar fram
 
         rates.push({
-          service_name: `🌱BLIXT Cykelleverans ${index + 1} ${box.ombud_name} (${Math.round(box.distance)} m)🌱`,
+          service_name: cutoffOmbud
+          ? `🌱BLIXT Cykelleverans ${index + 1} ${box.ombud_name} (${Math.round(box.distance)} m) Leverans idag!🌱`
+          : `🌱BLIXT Cykelleverans ${index + 1} ${box.ombud_name} (${Math.round(box.distance)} m)`,
           service_code: `blixt_box_${box.id}`,
           total_price: String(ombud),
           currency: "SEK",
-          description: cutoffOmbud
-  ? `Beställ före ${cutoffOmbud} för leverans idag – ${box.ombud_adress}`
-  : box.ombud_adress,
-
-          min_delivery_date: now.toISOString(),
-          max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
-        });
+          description: `Beställ före ${cutoffOmbud} för leverans samma kväll`,
+         min_delivery_date: deliveryTime.toISOString(),
+max_delivery_date: deliveryTime.toISOString(),
+});
       });
     } else {
       console.warn("⚠️ Inga paketskåp hittades – lägger till fallback-ombud");
