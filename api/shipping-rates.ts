@@ -124,6 +124,16 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
       .eq("_id", shop?.user_id)
       .single();
 
+      // 🔍 Kolla om det finns tillgänglig kurir för 2h
+const { data: courierData, error: courierError } = await supabase
+  .from("couriers")
+  .select("user_id")
+  .eq("aktiv", "aktiv")
+  .eq("leveranstyp", "hemleverans");
+
+const hasAvailableCourier = courierData && courierData.length > 0;
+
+
     const home2h = toOre(profile?.pris_hem2h ?? 99, 9900);
     const homeEvening = toOre(profile?.pris_hemkvall ?? 65, 6500);
     const ombud = toOre(profile?.pris_ombud ?? 45, 4500);
@@ -159,26 +169,31 @@ const fullAddress = `${street}, ${postcode} ${city}, ${country}`;
       expressDescription = `Cykelleverans vid öppning (${pad(slotStart.getHours())}–${pad(slotEnd.getHours())})`;
     }
 
-    const rates: ShopifyRate[] = [
-      {
-        service_name: "🚴‍♂️ Blixt Hem inom 2h",
-        service_code: "blixt_home_2h",
-        total_price: String(home2h),
-        currency: "SEK",
-        description: expressDescription,
-        min_delivery_date: slotStart.toISOString(),
-        max_delivery_date: slotEnd.toISOString(),
-      },
-      {
-        service_name: "🌆 Blixt Kväll (17–21)",
-        service_code: "blixt_home_evening",
-        total_price: String(homeEvening),
-        currency: "SEK",
-        description: "Leverans samma kväll",
-        min_delivery_date: slotStart.toISOString(),
-        max_delivery_date: slotEnd.toISOString(),
-      },
-    ];
+const rates: ShopifyRate[] = [];
+
+if (hasAvailableCourier) {
+  rates.push({
+    service_name: "🚴‍♂️ Blixt Hem inom 2h",
+    service_code: "blixt_home_2h",
+    total_price: String(home2h),
+    currency: "SEK",
+    description: expressDescription,
+    min_delivery_date: slotStart.toISOString(),
+    max_delivery_date: slotEnd.toISOString(),
+  });
+}
+
+// 💡 Lägg till kvällsleverans alltid (eller gör egen check om du vill)
+rates.push({
+  service_name: "🌆 Blixt Kväll (17–21)",
+  service_code: "blixt_home_evening",
+  total_price: String(homeEvening),
+  currency: "SEK",
+  description: "Leverans samma kväll",
+  min_delivery_date: slotStart.toISOString(),
+  max_delivery_date: slotEnd.toISOString(),
+});
+
 
     // 👇 Hämta paketskåp om antal > 0
  // 👇 Hämta paketskåp om antal > 0
