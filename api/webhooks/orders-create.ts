@@ -31,30 +31,34 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
   const qrBytes = Uint8Array.from(Buffer.from(qrBase64, "base64"));
   const qrImage = await pdfDoc.embedPng(qrBytes);
 
-  if (order.order_type === "hemleverans") {
-    page.drawText("Order ID:", { x: 20, y: 350, size: 25, font });
-    page.drawText(`${order.order_id}`, { x: 20, y: 320, size: 25, font });
+ if (order.order_type === "hemleverans" || order.order_type === "kvällsleverans") {
+  const leveransText = order.order_type === "kvällsleverans" ? "Kvällsleverans" : "Hemleverans";
 
-    page.drawText(`Namn: ${order.name}`, { x: 20, y: 280, size: 15 });
-    page.drawText(`Adress: ${order.address1}`, { x: 20, y: 260, size: 15 });
-    page.drawText(`${order.postalnumber} ${order.city}`, { x: 20, y: 240, size: 15 });
-    page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 200, size: 15 });
-    page.drawText(`Leverans med:`, { x: 20, y: 170, size: 15 });
-    page.drawText(`Blixt Delivery`, { x: 20, y: 130, size: 25 });
+    page.drawText(`${leveransText}`, { x: 20, y: 370, size: 20, font });
+  page.drawText("Order ID:", { x: 20, y: 350, size: 25, font });
+  page.drawText(`${order.order_id}`, { x: 20, y: 320, size: 25, font });
 
-    page.drawImage(logoImage, {
-      x: (480 - logoDims.width) / 2,
-      y: 100,
-      width: logoDims.width,
-      height: logoDims.height,
-    });
+  page.drawText(`Namn: ${order.name}`, { x: 20, y: 280, size: 15 });
+  page.drawText(`Adress: ${order.address1}`, { x: 20, y: 260, size: 15 });
+  page.drawText(`${order.postalnumber} ${order.city}`, { x: 20, y: 240, size: 15 });
+  page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 200, size: 15 });
+  page.drawText(`Leverans med:`, { x: 20, y: 170, size: 15 });
+  page.drawText(`Blixt Delivery`, { x: 20, y: 130, size: 25 });
 
-    page.drawImage(qrImage, {
-      x: pageWidth - 200,
-      y: 15,
-      width: 100,
-      height: 100,
-    });
+  page.drawImage(logoImage, {
+    x: (480 - logoDims.width) / 2,
+    y: 100,
+    width: logoDims.width,
+    height: logoDims.height,
+  });
+
+  page.drawImage(qrImage, {
+    x: pageWidth - 200,
+    y: 15,
+    width: 100,
+    height: 100,
+  });
+
   } else {
     page.drawText("Ombud/Paketbox", { x: 20, y: 350, size: 20, font });
     page.drawText(`${order.ombud_name}`, { x: 20, y: 310, size: 20, font });
@@ -150,7 +154,10 @@ if (shippingCode.startsWith("blixt_box_")) {
 
   selectedBox = boxData;
 
+} else if (shippingCode === "blixt_home_evening") {
+  orderType = "kvällsleverans";
 }
+
 
 
 
