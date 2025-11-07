@@ -155,7 +155,7 @@ const fullAddress = `${street}, ${postcode} ${city}, ${country}`;
       return;
     }
 
- const now = new Date();
+ const now = new Date(Date.now() + 60 * 60 * 1000); // ⏱ +1h för svensk tid
 let slotStart: Date;
 let slotEnd: Date;
 let expressDescription: string;
