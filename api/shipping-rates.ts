@@ -79,6 +79,7 @@ const ALLOWED_POSTCODES = [
 // 👇 fixa typerna
 const pad = (n: number): string => n.toString().padStart(2, "0");
 
+
 const toOre = (v: number | string | null | undefined, fallback: number): number => {
   if (v === null || v === undefined) return fallback;
   const n = Number(v);
@@ -154,23 +155,31 @@ const fullAddress = `${street}, ${postcode} ${city}, ${country}`;
       return;
     }
 
-    const now = new Date();
-    let slotStart: Date;
-    let slotEnd: Date;
-    let expressDescription: string;
+ const now = new Date();
+let slotStart: Date;
+let slotEnd: Date;
+let expressDescription: string;
 
-    if (now.getHours() >= OPENING_HOUR && now.getHours() < CLOSING_HOUR) {
-      slotStart = new Date(now);
-      slotEnd = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-      if (slotEnd.getHours() >= CLOSING_HOUR) slotEnd.setHours(CLOSING_HOUR, 0, 0, 0);
-      expressDescription = `Cykelleverans mellan ${pad(slotStart.getHours())}–${pad(slotEnd.getHours())}`;
-    } else {
-      slotStart = new Date(now);
-      if (now.getHours() >= CLOSING_HOUR) slotStart.setDate(now.getDate() + 1);
-      slotStart.setHours(OPENING_HOUR, 0, 0, 0);
-      slotEnd = new Date(slotStart.getTime() + 2 * 60 * 60 * 1000);
-      expressDescription = `Cykelleverans vid öppning (${pad(slotStart.getHours())}–${pad(slotEnd.getHours())})`;
-    }
+if (now.getHours() >= OPENING_HOUR && now.getHours() < CLOSING_HOUR) {
+  slotStart = new Date(now);
+  slotEnd = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+  if (slotEnd.getHours() >= CLOSING_HOUR) {
+    slotEnd.setHours(CLOSING_HOUR, 0, 0, 0);
+  }
+
+  expressDescription = `Cykelleverans mellan ${pad(slotStart.getHours())}:${pad(slotStart.getMinutes())}–${pad(slotEnd.getHours())}:${pad(slotEnd.getMinutes())}`;
+} else {
+  slotStart = new Date(now);
+  if (now.getHours() >= CLOSING_HOUR) {
+    slotStart.setDate(now.getDate() + 1);
+  }
+  slotStart.setHours(OPENING_HOUR, 0, 0, 0);
+  slotEnd = new Date(slotStart.getTime() + 2 * 60 * 60 * 1000);
+
+  expressDescription = `Cykelleverans vid öppning (${pad(slotStart.getHours())}:${pad(slotStart.getMinutes())}–${pad(slotEnd.getHours())}:${pad(slotEnd.getMinutes())})`;
+}
+
 
 const rates: ShopifyRate[] = [];
 
@@ -188,11 +197,11 @@ if (hasAvailableCourier) {
 
 // 💡 Lägg till kvällsleverans alltid (eller gör egen check om du vill)
 rates.push({
-  service_name: "🌱🌆 Blixt Kväll (17–21)🌱",
+  service_name: "🌱BLIXT Hemleverans kväll 17-22🌱",
   service_code: "blixt_home_evening",
   total_price: String(homeEvening),
   currency: "SEK",
-  description: "Leverans samma kväll",
+  description: "",
   min_delivery_date: slotStart.toISOString(),
   max_delivery_date: slotEnd.toISOString(),
 });
