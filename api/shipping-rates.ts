@@ -131,7 +131,10 @@ const { data: courierData, error: courierError } = await supabase
   .eq("aktiv", "aktiv")
   .eq("leveranstyp", "hemleverans");
 
+
 const hasAvailableCourier = courierData && courierData.length > 0;
+console.log("🚚 Tillgängliga kurirer:", courierData?.length);
+console.log("🕵️‍♂️ courierData:", courierData);
 
 
     const home2h = toOre(profile?.pris_hem2h ?? 99, 9900);
