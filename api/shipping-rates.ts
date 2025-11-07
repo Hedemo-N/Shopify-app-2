@@ -121,7 +121,7 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("pris_ombud, pris_hemkvall, pris_hem2h, number_box")
+      .select("pris_ombud, pris_hemkvall, pris_hem2h, number_box, cutoff_time_evening, cutoff_time_ombud")
       .eq("_id", shop?.user_id)
       .single();
 
@@ -136,6 +136,14 @@ const { data: courierData, error: courierError } = await supabase
 const hasAvailableCourier = courierData && courierData.length > 0;
 console.log("🚚 Tillgängliga kurirer:", courierData?.length);
 console.log("🕵️‍♂️ courierData:", courierData);
+const formatTime = (time: string | null | undefined): string => {
+  if (!time) return "";
+  const [hour, minute] = time.split(":").map(Number);
+  return `${pad(hour)}:${pad(minute)}`;
+};
+
+const cutoffOmbud = formatTime(profile?.cutoff_time_ombud);
+const cutoffEvening = formatTime(profile?.cutoff_time_evening);
 
 
     const home2h = toOre(profile?.pris_hem2h ?? 99, 9900);
@@ -168,7 +176,7 @@ if (now.getHours() >= OPENING_HOUR && now.getHours() < CLOSING_HOUR) {
     slotEnd.setHours(CLOSING_HOUR, 0, 0, 0);
   }
 
-  expressDescription = `Cykelleverans mellan ${pad(slotStart.getHours())}:${pad(slotStart.getMinutes())}–${pad(slotEnd.getHours())}:${pad(slotEnd.getMinutes())}`;
+  expressDescription = `Cykelleverans till dörren mellan ${pad(slotStart.getHours())}:${pad(slotStart.getMinutes())}–${pad(slotEnd.getHours())}:${pad(slotEnd.getMinutes())}`;
 } else {
   slotStart = new Date(now);
   if (now.getHours() >= CLOSING_HOUR) {
@@ -177,7 +185,7 @@ if (now.getHours() >= OPENING_HOUR && now.getHours() < CLOSING_HOUR) {
   slotStart.setHours(OPENING_HOUR, 0, 0, 0);
   slotEnd = new Date(slotStart.getTime() + 2 * 60 * 60 * 1000);
 
-  expressDescription = `Cykelleverans vid öppning (${pad(slotStart.getHours())}:${pad(slotStart.getMinutes())}–${pad(slotEnd.getHours())}:${pad(slotEnd.getMinutes())})`;
+  expressDescription = `Cykelleverans till dörren vid öppning (${pad(slotStart.getHours())}:${pad(slotStart.getMinutes())}–${pad(slotEnd.getHours())}:${pad(slotEnd.getMinutes())})`;
 }
 
 
@@ -201,7 +209,9 @@ rates.push({
   service_code: "blixt_home_evening",
   total_price: String(homeEvening),
   currency: "SEK",
-  description: "",
+  description: cutoffEvening
+    ? `Beställ före ${cutoffEvening} för leverans samma kväll`
+    : "Leverans samma kväll",
   min_delivery_date: slotStart.toISOString(),
   max_delivery_date: slotEnd.toISOString(),
 });
@@ -274,7 +284,10 @@ return Number.isFinite(lat) && Number.isFinite(lng)
           service_code: `blixt_box_${box.id}`,
           total_price: String(ombud),
           currency: "SEK",
-          description: box.ombud_adress,
+          description: cutoffOmbud
+  ? `Beställ före ${cutoffOmbud} för leverans idag – ${box.ombud_adress}`
+  : box.ombud_adress,
+
           min_delivery_date: now.toISOString(),
           max_delivery_date: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
         });
