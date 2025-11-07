@@ -138,9 +138,12 @@ console.log("🚚 Tillgängliga kurirer:", courierData?.length);
 console.log("🕵️‍♂️ courierData:", courierData);
 const formatTime = (time: string | null | undefined): string => {
   if (!time) return "";
-  const [hour, minute] = time.split(":").map(Number);
+  const parts = time.split(":").map(Number);
+  const hour = parts[0] ?? 0;
+  const minute = parts[1] ?? 0;
   return `${pad(hour)}:${pad(minute)}`;
 };
+
 
 const cutoffOmbud = formatTime(profile?.cutoff_time_ombud);
 const cutoffEvening = formatTime(profile?.cutoff_time_evening);
