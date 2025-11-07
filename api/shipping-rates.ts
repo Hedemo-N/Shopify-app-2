@@ -149,7 +149,12 @@ const formatTime = (time: string | null | undefined): string => {
 const cutoffOmbud = formatTime(profile?.cutoff_time_ombud);
 const cutoffEvening = formatTime(profile?.cutoff_time_evening);
 
-
+console.log("⏱️ Cutoff tider:", {
+  cutoffOmbud,
+  cutoffEvening,
+  rawOmbud: profile?.cutoff_time_ombud,
+  rawEvening: profile?.cutoff_time_evening,
+});
     const home2h = toOre(profile?.pris_hem2h ?? 99, 9900);
     const homeEvening = toOre(profile?.pris_hemkvall ?? 65, 6500);
     const ombud = toOre(profile?.pris_ombud ?? 45, 4500);
