@@ -225,6 +225,67 @@ if (refetchError || !updatedOrder) {
 savedOrder = updatedOrder; // ersätt gamla savedOrder med den fulla versionen
 
 
+// 🔄 Tilldela kurir om det är hemleverans
+if (savedOrder.order_type === "hemleverans") {
+  const { data: couriers, error: courierError } = await supabase
+    .from("couriers")
+    .select("user_id, last_eta")
+    .eq("aktiv", "aktiv")
+    .eq("leveranstyp", "hemleverans");
+
+  if (courierError || !couriers?.length) {
+    console.warn("⚠️ Inga aktiva kurirer tillgängliga för hemleverans.");
+  } else {
+    // 🔍 Hämta butikens adress
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("Butiksadress")
+      .eq("_id", userId)
+      .single();
+
+    const butikensAdress = profile?.Butiksadress;
+
+    let matchedCourier = null;
+
+    // 1. Försök hitta en kurir med samma butiksadress
+    for (const courier of couriers) {
+      const { data: courierOrders } = await supabase
+        .from("orders_primary")
+        .select("Butiksadress")
+        .eq("kurir_id", courier.user_id)
+        .in("status", ["kommande"]);
+
+      const hasSameAddress = courierOrders?.some(
+        (o) => o.Butiksadress === butikensAdress
+      );
+
+      if (hasSameAddress) {
+        matchedCourier = courier;
+        break;
+      }
+    }
+
+    // 2. Om ingen match – ta den med lägst ETA
+    if (!matchedCourier) {
+      matchedCourier = couriers.reduce((prev, curr) => {
+        const prevEta = prev.last_eta || "99:99";
+        const currEta = curr.last_eta || "99:99";
+        return prevEta < currEta ? prev : curr;
+      });
+    }
+
+    // 📝 Uppdatera ordern
+    await supabase
+      .from("orders")
+      .update({
+        kurir_id: matchedCourier.user_id,
+        status: "kommande",
+      })
+      .eq("id", savedOrder.id);
+
+    console.log(`🚴 Kurir tilldelad: ${matchedCourier.user_id}`);
+  }
+}
 
 
       // 🔹 Generera PDF

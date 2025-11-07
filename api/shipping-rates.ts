@@ -176,7 +176,7 @@ const rates: ShopifyRate[] = [];
 
 if (hasAvailableCourier) {
   rates.push({
-    service_name: "🚴‍♂️ Blixt Hem inom 2h",
+    service_name: "🌱BLIXT EXPRESS Hemleverans på cykel inom 2 timmar🌱",
     service_code: "blixt_home_2h",
     total_price: String(home2h),
     currency: "SEK",
@@ -188,7 +188,7 @@ if (hasAvailableCourier) {
 
 // 💡 Lägg till kvällsleverans alltid (eller gör egen check om du vill)
 rates.push({
-  service_name: "🌆 Blixt Kväll (17–21)",
+  service_name: "🌱🌆 Blixt Kväll (17–21)🌱",
   service_code: "blixt_home_evening",
   total_price: String(homeEvening),
   currency: "SEK",
@@ -261,7 +261,7 @@ return Number.isFinite(lat) && Number.isFinite(lng)
         console.log("✅ Nu använder vi ombud_name i service_name");
 
         rates.push({
-          service_name: `BLIXT Cykelleverans ${index + 1} ${box.ombud_name} (${Math.round(box.distance)} m)`,
+          service_name: `🌱BLIXT Cykelleverans ${index + 1} ${box.ombud_name} (${Math.round(box.distance)} m)🌱`,
           service_code: `blixt_box_${box.id}`,
           total_price: String(ombud),
           currency: "SEK",
