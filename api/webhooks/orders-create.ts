@@ -192,7 +192,7 @@ if (existingOrder) {
             user_id: userId,
             ordercreatedtime: new Date().toISOString(),
             numberofkollin: order.line_items?.length ?? 1,
-            status: "pending",
+            status: "kommande",
           },
         ])
         .select();

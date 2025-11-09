@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Blixt Admin</title>
+    <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+    <script src="https://unpkg.com/@shopify/app-bridge-utils@2"></script>
+  </head>
+  <body>
+    <h1>Blixt Delivery Admin</h1>
+
+    <script>
+      const AppBridge = window.appBridge;
+      const AppBridgeUtils = window.appBridgeUtils;
+
+      const createApp = AppBridge.default;
+      const getSessionToken = AppBridgeUtils.getSessionToken;
+
+      const app = createApp({
+
+  apiKey: "f1ad1b493f65f36ffbc728cb00e594fe",
+        host: new URLSearchParams(location.search).get("host"),
+        forceRedirect: true,
+      });
+
+      getSessionToken(app).then((token) => {
+        console.log("🔑 Session token:", token);
+        // använd token i t.ex. fetch
+      });
+    </script>
+  </body>
+</html>

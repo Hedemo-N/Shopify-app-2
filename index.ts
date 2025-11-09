@@ -9,6 +9,7 @@ import shippingRatesRoutes from "./api/shipping-rates.js";
 import ordersCreateWebhook from "./api/webhooks/orders-create.js";
 import sendLabelEmailRouter from "./api/webhooks/send-label-email.js";
 
+
 dotenv.config();
 
 const app = express();
@@ -20,7 +21,7 @@ const shopify = shopifyApi({
   scopes: process.env.SHOPIFY_SCOPES!.split(","),
   hostName: process.env.SHOPIFY_APP_URL!.replace(/https?:\/\//, ""),
   apiVersion: ApiVersion.July24,
-  isEmbeddedApp: false,
+  isEmbeddedApp: true,
   sessionStorage: memorySessionStorage,
 });
 
@@ -34,6 +35,7 @@ app.use("/api", ordersRoute);
 app.use("/", authRoutes);
 app.use("/", shippingRatesRoutes);
 app.use("/api/webhooks", sendLabelEmailRouter);
+app.use(express.static("public"));
 
 
 
