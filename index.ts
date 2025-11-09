@@ -24,8 +24,10 @@ const shopify = shopifyApi({
   isEmbeddedApp: true,
   sessionStorage: memorySessionStorage,
 });
+app.get("/", (req, res) => {
+  res.sendFile("index.html", { root: "public" });
+});
 
-app.get("/", (req, res) => res.send("🚀 Blixt Delivery Shopify App"));
 
 // 💡 Viktigt: Lägg webhooken före express.json()
 app.use("/", ordersCreateWebhook);
