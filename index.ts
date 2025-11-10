@@ -8,6 +8,7 @@ import ordersRoute from "./api/orders.js";
 import shippingRatesRoutes from "./api/shipping-rates.js";
 import ordersCreateWebhook from "./api/webhooks/orders-create.js";
 import sendLabelEmailRouter from "./api/webhooks/send-label-email.js";
+import path from "path";
 
 
 dotenv.config();
@@ -25,8 +26,9 @@ const shopify = shopifyApi({
   sessionStorage: memorySessionStorage,
 });
 app.get("/", (req, res) => {
-  res.sendFile("index.html", { root: "public" });
+  res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
 });
+
 
 
 // 💡 Viktigt: Lägg webhooken före express.json()
