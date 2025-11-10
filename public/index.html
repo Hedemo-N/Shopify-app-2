@@ -17,15 +17,19 @@
       const getSessionToken = AppBridgeUtils.getSessionToken;
 
       const app = createApp({
-
-  apiKey: "f1ad1b493f65f36ffbc728cb00e594fe",
+        apiKey: "f1ad1b493f65f36ffbc728cb00e594fe",
         host: new URLSearchParams(location.search).get("host"),
         forceRedirect: true,
       });
 
       getSessionToken(app).then((token) => {
-        console.log("🔑 Session token:", token);
-        // använd token i t.ex. fetch
+        console.log("🔑 Token:", token);
+        fetch("/api/ping", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
       });
     </script>
   </body>
