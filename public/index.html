@@ -3,18 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <title>Blixt Admin</title>
-    <!-- Ladda App Bridge och utils via UMD -->
     <script src="https://unpkg.com/@shopify/app-bridge@3.7.4/umd/index.js"></script>
     <script src="https://unpkg.com/@shopify/app-bridge-utils@2.1.5/umd/index.js"></script>
   </head>
   <body>
-    <h1>Blixt Delivery Admin 1</h1>
-<script>
-  console.log("✅ JS körs!");
-</script>
+    <h1>Blixt Delivery Admin</h1>
 
     <script>
-      console.log("✅ appBridge är:", window["app-bridge"]);
+      console.log("✅ JS körs!");
 
       const AppBridge = window["app-bridge"];
       const AppBridgeUtils = window["app-bridge-utils"];
@@ -29,15 +25,19 @@
       });
 
       console.log("🚀 Försöker hämta token...");
-      getSessionToken(app).then((token) => {
-        console.log("🔑 Token:", token);
-        fetch("/api/ping", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      });
+      getSessionToken(app)
+        .then((token) => {
+          console.log("🔑 Token:", token);
+          return fetch("/api/ping", {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        })
+        .then((res) => res.json())
+        .then((data) => console.log("📬 Svar från /api/ping:", data))
+        .catch((err) => console.error("❌ Fel vid token eller fetch:", err));
     </script>
   </body>
 </html>
