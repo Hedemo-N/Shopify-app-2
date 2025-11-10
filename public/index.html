@@ -21,7 +21,7 @@
         host: new URLSearchParams(location.search).get("host"),
         forceRedirect: true,
       });
-
+console.log("🚀 Försöker hämta token...");
       getSessionToken(app).then((token) => {
         console.log("🔑 Token:", token);
         fetch("/api/ping", {
