@@ -3,17 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <title>Blixt Admin</title>
-    <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
-    <script src="https://unpkg.com/@shopify/app-bridge-utils@2"></script>
+    <!-- Ladda App Bridge och utils via UMD -->
+    <script src="https://unpkg.com/@shopify/app-bridge@3.7.4/umd/index.js"></script>
+    <script src="https://unpkg.com/@shopify/app-bridge-utils@2.1.5/umd/index.js"></script>
   </head>
   <body>
     <h1>Blixt Delivery Admin 1</h1>
 
     <script>
-      const AppBridge = window.appBridge;
-      const AppBridgeUtils = window.appBridgeUtils;
+      console.log("✅ appBridge är:", window["app-bridge"]);
 
-      const createApp = AppBridge.default;
+      const AppBridge = window["app-bridge"];
+      const AppBridgeUtils = window["app-bridge-utils"];
+
+      const createApp = AppBridge.createApp;
       const getSessionToken = AppBridgeUtils.getSessionToken;
 
       const app = createApp({
@@ -21,7 +24,8 @@
         host: new URLSearchParams(location.search).get("host"),
         forceRedirect: true,
       });
-console.log("🚀 Försöker hämta token...");
+
+      console.log("🚀 Försöker hämta token...");
       getSessionToken(app).then((token) => {
         console.log("🔑 Token:", token);
         fetch("/api/ping", {
