@@ -31,7 +31,7 @@ router.get("/auth", async (req, res) => {
     await shopify.auth.begin({
       shop,
       callbackPath: "/auth/callback",
-      isOnline: false,
+      isOnline: true,
       rawRequest: req,
       rawResponse: res,
     });
