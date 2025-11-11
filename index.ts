@@ -21,7 +21,9 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 app.use(cookieParser()); // 🧠 Viktigt: måste vara tidigt för att Shopify ska hitta OAuth-cookie
+app.use("/", authRoutes);
 // --- Shopify initiering ---
+
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
   apiSecretKey: process.env.SHOPIFY_API_SECRET!,
@@ -49,7 +51,6 @@ app.get("/", (req, res) => {
 
 // --- Rutter för API och Shopify
 app.use("/api", ordersRoute);
-app.use("/", authRoutes);
 app.use("/", shippingRatesRoutes);
 app.use("/api/webhooks", sendLabelEmailRouter);
 app.use("/api/webhooks", appUninstalledWebhook);
