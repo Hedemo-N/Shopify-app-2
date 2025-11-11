@@ -2,9 +2,10 @@ import "@shopify/shopify-api/adapters/node";
 import express from "express";
 import dotenv from "dotenv";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
-import { memorySessionStorage } from "./memorySessionStorage.js";
 import { supabase } from "./supabaseClient.js";
 import fetch from "node-fetch";
+import { customSessionStorage } from "./customSessionStorage.js"; // istället för memorySessionStorage
+
 
 dotenv.config();
 const router = express.Router();
@@ -17,7 +18,7 @@ const shopify = shopifyApi({
   hostName: process.env.SHOPIFY_APP_URL!.replace(/https?:\/\//, ""),
   apiVersion: ApiVersion.July24,
   isEmbeddedApp: true,
-  sessionStorage: memorySessionStorage,
+  sessionStorage: customSessionStorage,
 });
 
 // --- 1️⃣ Start auth flow ---
