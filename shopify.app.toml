@@ -2,5 +2,13 @@
 api_version = "2024-07"
 
 [[webhooks.subscriptions]]
-compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
-uri = "https://blixt-app.vercel.app/api/webhooks/compliance"
+topic = "customers/data_request"
+path = "api/webhooks/customers-data-request"
+
+[[webhooks.subscriptions]]
+topic = "customers/redact"
+path = "api/webhooks/customers-redact"
+
+[[webhooks.subscriptions]]
+topic = "shop/redact"
+path = "api/webhooks/shop-redact"

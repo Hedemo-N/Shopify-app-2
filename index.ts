@@ -10,7 +10,11 @@ import ordersCreateWebhook from "./api/webhooks/orders-create.js";
 import sendLabelEmailRouter from "./api/webhooks/send-label-email.js";
 import path from "path";
 import appUninstalledWebhook from "./api/webhooks/app-uninstalled.js";
-import complianceWebhooks from "./api/webhooks/compliance.js";
+import customersDataRequest from "./api/webhooks/customers-data-request.js";
+import customersRedact from "./api/webhooks/customers-redact.js";
+import shopRedact from "./api/webhooks/shop-redact.js";
+
+
 
 
 
@@ -52,7 +56,9 @@ app.use("/", shippingRatesRoutes);
 app.use("/api/webhooks", sendLabelEmailRouter);
 app.use(express.static("public"));
 app.use("/api/webhooks", appUninstalledWebhook);
-app.use("/", complianceWebhooks);
+app.use("/", customersDataRequest);
+app.use("/", customersRedact);
+app.use("/", shopRedact);
 
 
 
