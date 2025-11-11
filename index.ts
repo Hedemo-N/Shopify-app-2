@@ -13,7 +13,7 @@ import appUninstalledWebhook from "./api/webhooks/app-uninstalled.js";
 import customersDataRequest from "./api/webhooks/customers-data-request.js";
 import customersRedact from "./api/webhooks/customers-redact.js";
 import shopRedact from "./api/webhooks/shop-redact.js";
-
+import cookieParser from "cookie-parser";
 
 
 
@@ -52,6 +52,7 @@ app.use(express.json());
 app.use("/api", ordersRoute);
 app.use("/", authRoutes);
 app.use("/", shippingRatesRoutes);
+app.use(cookieParser());
 app.use("/api/webhooks", sendLabelEmailRouter);
 app.use("/api/webhooks", appUninstalledWebhook);
 app.use("/", customersDataRequest);

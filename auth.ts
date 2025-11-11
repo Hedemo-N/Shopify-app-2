@@ -24,12 +24,10 @@ const shopify = shopifyApi({
 router.get("/auth", async (req, res) => {
   try {
     const shop = req.query.shop as string;
-    if (!shop) {
-      res.status(400).send("Missing shop parameter!");
-      return;
-    }
+    if (!shop) return res.status(400).send("Missing shop parameter!");
 
-    const authUrl = await shopify.auth.begin({
+    // Shopify SDK sköter redirecten internt
+    await shopify.auth.begin({
       shop,
       callbackPath: "/auth/callback",
       isOnline: false,
@@ -37,15 +35,15 @@ router.get("/auth", async (req, res) => {
       rawResponse: res,
     });
 
-    return res.redirect(authUrl);
+    // ❌ Ta bort: return res.redirect(authUrl);
   } catch (error) {
     console.error("❌ Error starting auth:", error);
     if (!res.headersSent) {
-      res.status(500).send("Auth start failed");
+      return res.status(500).send("Auth start failed");
     }
-    return;
   }
 });
+
 
 // --- 2️⃣ Register shipping carrier ---
 const registerCarrier = async (shop: string, token: string): Promise<void> => {
