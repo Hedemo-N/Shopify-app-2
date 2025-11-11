@@ -49,7 +49,7 @@ app.get("/api/ping", (req, res) => {
 // 💡 Viktigt: Lägg webhooken före express.json()
 app.use("/", ordersCreateWebhook);
 
-app.use(express.json());
+
 app.use("/api", ordersRoute);
 app.use("/", authRoutes);
 app.use("/", shippingRatesRoutes);
@@ -59,6 +59,7 @@ app.use("/api/webhooks", appUninstalledWebhook);
 app.use("/", customersDataRequest);
 app.use("/", customersRedact);
 app.use("/", shopRedact);
+app.use(express.json());
 
 
 
