@@ -19,8 +19,7 @@ import shopRedact from "./api/webhooks/shop-redact.js";
 
 
 
-
-
+// ... import statements
 
 dotenv.config();
 
@@ -36,31 +35,33 @@ const shopify = shopifyApi({
   isEmbeddedApp: true,
   sessionStorage: memorySessionStorage,
 });
+
+// --- Static and homepage
+app.use(express.static("public"));
 app.get("/", (req, res) => {
   res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
 });
 
-app.get("/api/ping", (req, res) => {
-  console.log("📡 Ping mottagen med token:", req.headers.authorization);
-  res.json({ message: "Token mottagen!" });
-});
-
-
-// 💡 Viktigt: Lägg webhooken före express.json()
+// --- Webhook som kräver rå kropp (t.ex. HMAC-verifiering)
 app.use("/", ordersCreateWebhook);
 
+// --- NU lägger vi på JSON-parser
+app.use(express.json());
 
+// --- API-routes
 app.use("/api", ordersRoute);
 app.use("/", authRoutes);
 app.use("/", shippingRatesRoutes);
 app.use("/api/webhooks", sendLabelEmailRouter);
-app.use(express.static("public"));
 app.use("/api/webhooks", appUninstalledWebhook);
 app.use("/", customersDataRequest);
 app.use("/", customersRedact);
 app.use("/", shopRedact);
-app.use(express.json());
 
-
+// --- Test-ping
+app.get("/api/ping", (req, res) => {
+  console.log("📡 Ping mottagen med token:", req.headers.authorization);
+  res.json({ message: "Token mottagen!" });
+});
 
 export default app;

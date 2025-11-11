@@ -7,7 +7,6 @@ import { supabase } from "./supabaseClient.js";
 import fetch from "node-fetch";
 
 dotenv.config();
-
 const router = express.Router();
 
 // --- Shopify init ---
@@ -25,7 +24,10 @@ const shopify = shopifyApi({
 router.get("/auth", async (req, res) => {
   try {
     const shop = req.query.shop as string;
-    if (!shop) return res.status(400).send("Missing shop parameter!");
+    if (!shop) {
+      res.status(400).send("Missing shop parameter!");
+      return;
+    }
 
     const authUrl = await shopify.auth.begin({
       shop,
@@ -38,7 +40,10 @@ router.get("/auth", async (req, res) => {
     return res.redirect(authUrl);
   } catch (error) {
     console.error("❌ Error starting auth:", error);
-    return res.status(500).send("Auth start failed");
+    if (!res.headersSent) {
+      res.status(500).send("Auth start failed");
+    }
+    return;
   }
 });
 
@@ -78,9 +83,7 @@ router.get("/auth/callback", async (req, res) => {
     const accessToken = callback.session.accessToken!;
     const shop = callback.session.shop;
 
-    console.log("✅ Auth success:");
-    console.log("Shop:", shop);
-    console.log("Access token:", accessToken);
+    console.log("✅ Auth success:", { shop, accessToken });
 
     // --- Spara till Supabase ---
     const { data, error } = await supabase
@@ -95,14 +98,17 @@ router.get("/auth/callback", async (req, res) => {
         { onConflict: "shop" }
       );
 
-    if (error) console.error("❌ Supabase insert error:", error);
-    else console.log("✅ Token sparad i Supabase:", data);
+    if (error) {
+      console.error("❌ Supabase insert error:", error);
+    } else {
+      console.log("✅ Token sparad i Supabase:", data);
+    }
 
     // --- Registrera frakt-callback automatiskt ---
     await registerCarrier(shop, accessToken);
 
-    // --- Registrera webhook för orderuppdatering (istället för create) ---
-    const webhookResponse = await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
+    // --- Registrera webhook för orderuppdatering ---
+    await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
       method: "POST",
       headers: {
         "X-Shopify-Access-Token": accessToken,
@@ -117,34 +123,31 @@ router.get("/auth/callback", async (req, res) => {
       }),
     });
 
-    const webhookData = await webhookResponse.json();
-    console.log("🔔 Webhook registrerad (orders/updated):", webhookData);
+    // --- Registrera webhook för avinstallation ---
+    await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        webhook: {
+          topic: "app/uninstalled",
+          address: `${process.env.SHOPIFY_APP_URL}/api/webhooks/app-uninstalled`,
+          format: "json",
+        },
+      }),
+    });
 
-    // --- Registrera app/uninstalled webhook ---
-await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
-  method: "POST",
-  headers: {
-    "X-Shopify-Access-Token": accessToken,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    webhook: {
-      topic: "app/uninstalled",
-      address: `${process.env.SHOPIFY_APP_URL}/api/webhooks/app-uninstalled`,
-      format: "json",
-    },
-  }),
-});
-
-   if (!res.headersSent) {
-  const host = req.query.host;
-  return res.redirect(`/?shop=${shop}&host=${host}`);
-}
-
+    // --- Slutgiltig redirect ---
+    if (!res.headersSent) {
+      const host = req.query.host;
+      return res.redirect(`/?shop=${shop}&host=${host}`);
+    }
   } catch (error) {
     console.error("❌ Auth callback error:", error);
     if (!res.headersSent) {
-      res.status(500).send("Auth callback failed");
+      return res.status(500).send("Auth callback failed");
     }
   }
 });
