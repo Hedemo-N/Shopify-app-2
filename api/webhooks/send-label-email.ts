@@ -1,12 +1,31 @@
 import express, { Request, Response } from "express";
 import { Resend } from "resend";
+import crypto from "crypto";
 
 const router = express.Router();
 const resend = new Resend(process.env.BLIXT_SHOPIFY_MAIL!);
+
+// 🔐 Lägg till denna funktion här:
+function verifyInternalHmac(req: Request): boolean {
+  const hmacHeader = req.get("X-Custom-HMAC") || "";
+  const generatedHmac = crypto
+    .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
+    .update(JSON.stringify(req.body), "utf8")
+    .digest("hex");
+
+  return crypto.timingSafeEqual(Buffer.from(generatedHmac), Buffer.from(hmacHeader));
+}
+
+
 console.log("🔐 MAIL API KEY finns?", Boolean(process.env.BLIXT_SHOPIFY_MAIL));
 
 router.post("/send-label-email", async (req: Request, res: Response) => {
   console.log("📩 POST /send-label-email anropad");
+
+    if (!verifyInternalHmac(req)) {
+    console.warn("❌ Ogiltig intern HMAC-signatur");
+    return res.status(401).send("Unauthorized");
+  }
 
   const { to, labelUrl, orderId, customerName } = req.body;
 

@@ -8,6 +8,17 @@ import path from "path";
 import { Buffer } from "buffer";
 
 
+function isValidShopifyWebhook(req: express.Request, secret: string): boolean {
+  const hmacHeader = req.get("X-Shopify-Hmac-Sha256") || "";
+  const body = JSON.stringify(req.body);
+  const generatedHmac = crypto
+    .createHmac("sha256", secret)
+    .update(body, "utf8")
+    .digest("base64");
+  return crypto.timingSafeEqual(Buffer.from(generatedHmac), Buffer.from(hmacHeader));
+}
+
+
 // ...
 
 
@@ -331,19 +342,29 @@ if (pdfUrl) {
   // 🔹 Skicka e-post med etiketten
 const shopEmail = shopRow?.email;
 
+const payload = {
+  to: shopEmail,
+  labelUrl: pdfUrl,
+  orderId: savedOrder.order_id,
+  customerName: savedOrder.name,
+};
+const hmac = crypto
+  .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
+  .update(JSON.stringify(payload), "utf8")
+  .digest("hex");
+
 
 if (pdfUrl && shopEmail) {
   try {
-    const emailRes = await fetch("https://shopify-app-2-delta.vercel.app/api/webhooks/send-label-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: shopEmail,
-        labelUrl: pdfUrl,
-        orderId: savedOrder.order_id,
-        customerName: savedOrder.name,
-      }),
-    });
+   const emailRes = await fetch("https://shopify-app-2-delta.vercel.app/api/webhooks/send-label-email", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Custom-HMAC": hmac,
+  },
+  body: JSON.stringify(payload),
+});
+
 
     const result = await emailRes.json();
     console.log("📧 E-post skickad med etikett:", result);

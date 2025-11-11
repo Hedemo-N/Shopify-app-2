@@ -9,6 +9,11 @@ import shippingRatesRoutes from "./api/shipping-rates.js";
 import ordersCreateWebhook from "./api/webhooks/orders-create.js";
 import sendLabelEmailRouter from "./api/webhooks/send-label-email.js";
 import path from "path";
+import appUninstalledWebhook from "./api/webhooks/app-uninstalled.js";
+
+
+
+
 
 
 dotenv.config();
@@ -44,6 +49,7 @@ app.use("/", authRoutes);
 app.use("/", shippingRatesRoutes);
 app.use("/api/webhooks", sendLabelEmailRouter);
 app.use(express.static("public"));
+app.use("/api/webhooks", appUninstalledWebhook);
 
 
 

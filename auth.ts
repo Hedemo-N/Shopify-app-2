@@ -17,7 +17,7 @@ const shopify = shopifyApi({
   scopes: process.env.SHOPIFY_SCOPES!.split(","),
   hostName: process.env.SHOPIFY_APP_URL!.replace(/https?:\/\//, ""),
   apiVersion: ApiVersion.July24,
-  isEmbeddedApp: false,
+  isEmbeddedApp: true,
   sessionStorage: memorySessionStorage,
 });
 
@@ -120,9 +120,27 @@ router.get("/auth/callback", async (req, res) => {
     const webhookData = await webhookResponse.json();
     console.log("🔔 Webhook registrerad (orders/updated):", webhookData);
 
-    if (!res.headersSent) {
-      return res.status(200).send("✅ App installerad, Blixt Delivery aktiv och webhook skapad!");
-    }
+    // --- Registrera app/uninstalled webhook ---
+await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
+  method: "POST",
+  headers: {
+    "X-Shopify-Access-Token": accessToken,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    webhook: {
+      topic: "app/uninstalled",
+      address: `${process.env.SHOPIFY_APP_URL}/api/webhooks/app-uninstalled`,
+      format: "json",
+    },
+  }),
+});
+
+   if (!res.headersSent) {
+  const host = req.query.host;
+  return res.redirect(`/?shop=${shop}&host=${host}`);
+}
+
   } catch (error) {
     console.error("❌ Auth callback error:", error);
     if (!res.headersSent) {
