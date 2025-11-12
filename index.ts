@@ -1,3 +1,4 @@
+import session from "express-session";
 import "@shopify/shopify-api/adapters/node";
 import express from "express";
 import dotenv from "dotenv";
@@ -19,6 +20,21 @@ import topLevelAuthRoute from "./auth/topLevel.js";
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1); // 🧠 Vercel kräver detta för secure cookies
+
+app.use(
+  session({
+    secret: process.env.SHOPIFY_API_SECRET!,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: true,         // ❗ krävs för SameSite=None
+      sameSite: "none",     // ❗ krävs för att funka i iframe
+      httpOnly: true,       // extra säkerhet
+      maxAge: 60000,        // 1 minut (räcker för OAuth)
+    },
+  })
+);
 const PORT = 3000;
 
 app.use(cookieParser());
