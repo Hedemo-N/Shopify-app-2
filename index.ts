@@ -13,20 +13,19 @@ import customersRedact from "./api/webhooks/customers-redact.js";
 import shopRedact from "./api/webhooks/shop-redact.js";
 import path from "path";
 import cookieParser from "cookie-parser";
-import { customSessionStorage } from "./customSessionStorage.js"; // istället för memorySessionStorage
+import { customSessionStorage } from "./customSessionStorage.js";
 import topLevelAuthRoute from "./auth/topLevel.js";
-
-
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
-app.use(cookieParser()); // 🧠 Viktigt: måste vara tidigt för att Shopify ska hitta OAuth-cookie
+
+app.use(cookieParser());
 app.use("/", topLevelAuthRoute);
 app.use("/", authRoutes);
-// --- Shopify initiering ---
 
+// --- Shopify initiering ---
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
   apiSecretKey: process.env.SHOPIFY_API_SECRET!,
@@ -37,32 +36,17 @@ const shopify = shopifyApi({
   sessionStorage: customSessionStorage,
 });
 
-// --- Middleware i rätt ordning ---
-
-
-// --- Webhooks som kräver raw body först
+// --- Webhooks som kräver raw body först ---
 app.use("/", ordersCreateWebhook);
 app.use("/api/webhooks", appUninstalledWebhook);
 
-
-// --- JSON-parser (måste komma efter eventuella raw body routes)
+// --- JSON-parser (måste komma efter eventuella raw body routes) ---
 app.use(express.json());
 
-// --- Statisk filserver för root (t.ex. index.html)
+// --- Statisk filserver ---
 app.use(express.static("public"));
-app.get("/", (req, res) => {
-  res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
-});
 
-// --- Rutter för API och Shopify
-app.use("/api", ordersRoute);
-app.use("/", shippingRatesRoutes);
-app.use("/api/webhooks", sendLabelEmailRouter);
-app.use("/", customersDataRequest);
-app.use("/", customersRedact);
-app.use("/", shopRedact);
-
-// --- Testendpoint
+// --- Root: redirect vid installation annars index.html ---
 app.get("/", (req, res) => {
   const shop = req.query.shop as string;
   const host = req.query.host as string;
@@ -74,5 +58,12 @@ app.get("/", (req, res) => {
   res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
 });
 
+// --- API och webhooks ---
+app.use("/api", ordersRoute);
+app.use("/", shippingRatesRoutes);
+app.use("/api/webhooks", sendLabelEmailRouter);
+app.use("/", customersDataRequest);
+app.use("/", customersRedact);
+app.use("/", shopRedact);
 
 export default app;

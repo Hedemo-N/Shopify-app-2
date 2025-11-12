@@ -3,12 +3,12 @@ import crypto from "crypto";
 
 const router = express.Router();
 
-router.post("/api/webhooks/shop-redact", express.raw({ type: "application/json" }), (req, res) => {
+router.post("/shop/redact", express.raw({ type: "application/json" }), (req, res) => {
   const hmac = req.get("X-Shopify-Hmac-Sha256") || "";
   const body = req.body;
   const generatedHmac = crypto
     .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
-    .update(body, "utf8")
+    .update(body) // 🧩 ta bort "utf8"
     .digest("base64");
 
   if (!crypto.timingSafeEqual(Buffer.from(generatedHmac), Buffer.from(hmac))) {
@@ -17,7 +17,7 @@ router.post("/api/webhooks/shop-redact", express.raw({ type: "application/json" 
   }
 
   const payload = JSON.parse(body.toString("utf8"));
-  console.log("🏪 shop/redact payload mottagen:", payload);
+  console.log("🏪 shop/redact payload:", payload);
 
   res.status(200).send("OK");
 });
