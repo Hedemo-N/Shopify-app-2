@@ -20,20 +20,21 @@ router.get("/auth/toplevel", (req, res) => {
   res.setHeader("Content-Type", "text/html");
 
   res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head></head>
-      <body>
-        <script>
-          if (window.top === window.self) {
-            window.location.href = "${process.env.SHOPIFY_APP_URL}/auth?shop=${shop}&host=${host}";
-          } else {
-            window.top.location.href = "${process.env.SHOPIFY_APP_URL}/auth/toplevel?shop=${shop}&host=${host}";
-          }
-        </script>
-      </body>
-    </html>
-  `);
+  <!DOCTYPE html>
+  <html>
+    <body>
+      <form id="redirectForm" method="GET" action="${process.env.SHOPIFY_APP_URL}/auth">
+        <input type="hidden" name="shop" value="${shop}" />
+        <input type="hidden" name="host" value="${host}" />
+      </form>
+      <script>
+        document.getElementById("redirectForm").target = "_top";
+        document.getElementById("redirectForm").submit();
+      </script>
+    </body>
+  </html>
+`);
+
 });
 
 export default router;
