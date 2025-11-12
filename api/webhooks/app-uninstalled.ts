@@ -1,42 +1,39 @@
 import express from "express";
-import { supabase } from "../../supabaseClient.js";
-import dotenv from "dotenv";
-import bodyParser from "body-parser";
+import getRawBody from "raw-body";
 import crypto from "crypto";
-
-dotenv.config();
 
 const router = express.Router();
 
-// 🧠 Shopify kräver raw body för HMAC-verifiering
-router.use("/app-uninstalled", bodyParser.raw({ type: "application/json" }));
+router.post("/api/webhooks/app-uninstalled", async (req, res) => {
+  let rawBody;
 
-router.post("/app-uninstalled", async (req, res) => {
-  const isValid = verifyHmac(req, process.env.SHOPIFY_API_SECRET!);
+  try {
+    rawBody = await getRawBody(req);
+  } catch (err) {
+    console.error("❌ Failed to read raw body:", err);
+    return res.status(400).send("Invalid body");
+  }
 
-  if (!isValid) {
-    console.warn("⚠️ Ogiltig HMAC-signatur på webhook");
+  const hmacHeader = req.headers["x-shopify-hmac-sha256"] as string;
+
+  const digest = crypto
+    .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
+    .update(rawBody)
+    .digest("base64");
+
+  if (digest !== hmacHeader) {
+    console.warn("⚠️ Webhook HMAC mismatch");
     return res.status(401).send("Unauthorized");
   }
 
-  const data = JSON.parse(req.body.toString("utf8"));
-  const shop = data.domain;
+  const payload = JSON.parse(rawBody.toString());
+  const shop = payload.domain;
 
-  console.log("👋 App avinstallerad:", shop);
+  console.log("🧹 App avinstallerad av:", shop);
 
-  await supabase.from("shopify_shops").delete().eq("shop", shop);
+  // TODO: Rensa databasen, sessions etc
 
-  res.status(200).send("Webhook mottagen");
+  res.status(200).send("Webhook received");
 });
-
-function verifyHmac(req: express.Request, secret: string): boolean {
-  const hmac = req.headers["x-shopify-hmac-sha256"] as string;
-  const digest = crypto
-    .createHmac("sha256", secret)
-    .update(req.body, "utf8")
-    .digest("base64");
-
-  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(hmac));
-}
 
 export default router;

@@ -42,7 +42,7 @@ const shopify = shopifyApi({
 
 // --- Webhooks som kräver raw body först
 app.use("/", ordersCreateWebhook);
-
+app.use("/api/webhooks", appUninstalledWebhook);
 // --- JSON-parser (måste komma efter eventuella raw body routes)
 app.use(express.json());
 
@@ -56,7 +56,6 @@ app.get("/", (req, res) => {
 app.use("/api", ordersRoute);
 app.use("/", shippingRatesRoutes);
 app.use("/api/webhooks", sendLabelEmailRouter);
-app.use("/api/webhooks", appUninstalledWebhook);
 app.use("/", customersDataRequest);
 app.use("/", customersRedact);
 app.use("/", shopRedact);

@@ -15,17 +15,19 @@ router.get("/auth/toplevel", (req, res) => {
     sameSite: "strict",
   });
 
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <script>
-          window.top.location.href = "/auth?shop=${shop}&host=${host}";
-        </script>
-      </head>
-      <body></body>
-    </html>
-  `);
+  res.setHeader("Content-Type", "text/html");
+res.send(`
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <script>
+        window.top.location.href = "/auth?shop=${shop}&host=${host}";
+      </script>
+    </head>
+    <body></body>
+  </html>
+`);
+
 });
 
 export default router;
