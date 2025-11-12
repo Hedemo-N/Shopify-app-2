@@ -9,28 +9,28 @@ router.get("/auth/toplevel", (req, res) => {
     return res.status(400).send("Missing shop or host");
   }
 
-  // 🧠 Viktigt: tillåt cookies i embedded apps
   res.cookie("shopifyTopLevelOAuth", "1", {
     httpOnly: true,
     secure: true,
     sameSite: "none",
   });
 
-  // Förhindra cache-loopar
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("Pragma", "no-cache");
-
-  // 🔁 Meta refresh istället för window.top
   res.setHeader("Content-Type", "text/html");
+
   res.send(`
     <!DOCTYPE html>
     <html>
-      <head>
-       <meta http-equiv="refresh" content="0;url=${process.env.SHOPIFY_APP_URL}/auth?shop=${shop}&host=${host}">
-
-      </head>
+      <head></head>
       <body>
-        <p>Redirecting to authentication...</p>
+        <script>
+          if (window.top === window.self) {
+            window.location.href = "${process.env.SHOPIFY_APP_URL}/auth?shop=${shop}&host=${host}";
+          } else {
+            window.top.location.href = "${process.env.SHOPIFY_APP_URL}/auth/toplevel?shop=${shop}&host=${host}";
+          }
+        </script>
       </body>
     </html>
   `);
