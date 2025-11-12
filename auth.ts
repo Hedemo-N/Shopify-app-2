@@ -80,11 +80,16 @@ const registerCarrier = async (shop: string, token: string): Promise<void> => {
 
 // --- 3️⃣ Auth callback ---
 router.get("/auth/callback", async (req, res) => {
+ 
+  console.log("🔁 CALLBACK HIT:", req.query);
+
   try {
     const callback = await shopify.auth.callback({
       rawRequest: req,
       rawResponse: res,
     });
+
+    console.log("✅ shopify.auth.callback succeeded");
 
     const accessToken = callback.session.accessToken!;
     const shop = callback.session.shop;
@@ -179,12 +184,15 @@ if (!res.headersSent) {
 }
 
     
-  } catch (error) {
-    console.error("❌ Auth callback error:", error);
+ } catch (err: any) {
+  console.error("❌ Auth callback error:", err);
+  console.error("🧠 Stack trace:", err?.stack || "Ingen stacktrace");
+
     if (!res.headersSent) {
       return res.status(500).send("Auth callback failed");
     }
   }
 });
+
 
 export default router;
