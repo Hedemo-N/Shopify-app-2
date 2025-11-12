@@ -15,18 +15,28 @@ router.get("/auth/toplevel", (req, res) => {
     sameSite: "strict",
   });
 
-  res.setHeader("Content-Type", "text/html");
+res.setHeader("Content-Type", "text/html");
 res.send(`
   <!DOCTYPE html>
   <html>
     <head>
-      <script>
-        window.top.location.href = "/auth?shop=${shop}&host=${host}";
+      <script type="text/javascript">
+        const params = new URLSearchParams(window.location.search);
+        const shop = params.get("shop");
+        const host = params.get("host");
+        if (window.top === window.self) {
+          // Öppnas som top-level
+          window.location.href = "/auth?shop=" + shop + "&host=" + host;
+        } else {
+          // Öppna i ny tabb om iframe-block
+          window.top.location.assign("https://" + shop + "/admin/apps/blixt-delivery");
+        }
       </script>
     </head>
     <body></body>
   </html>
 `);
+
 
 });
 
