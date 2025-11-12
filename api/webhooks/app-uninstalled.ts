@@ -18,13 +18,12 @@ function verifyHmac(req: Request, res: Response, next: NextFunction) {
     return res.status(400).send("Bad request");
   }
 
-const generatedHash = crypto
-  .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
-  .update(rawBody) // 🧩 ta bort "utf8"
-  .digest("base64");
+  const generatedHash = crypto
+    .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
+    .update(rawBody)
+    .digest("base64");
 
-
-  if (generatedHash !== hmacHeader) {
+  if (!crypto.timingSafeEqual(Buffer.from(generatedHash), Buffer.from(hmacHeader))) {
     console.warn("🔒 HMAC mismatch");
     return res.status(401).send("Unauthorized");
   }
@@ -34,12 +33,12 @@ const generatedHash = crypto
 
 // 🚪 POST-endpoint för avinstallation
 router.post(
-  "/app-uninstalled",
-  express.raw({ type: "*/*" }), // 👈 Behåll raw body (viktigt för HMAC)
+  "/app/uninstalled",
+  express.raw({ type: "application/json" }),
   verifyHmac,
   async (req: Request, res: Response) => {
     try {
-      const payload = JSON.parse((req.body as Buffer).toString());
+      const payload = JSON.parse((req.body as Buffer).toString("utf8"));
       const shop = payload.domain;
 
       console.log(`🧹 App avinstallerad av: ${shop}`);
