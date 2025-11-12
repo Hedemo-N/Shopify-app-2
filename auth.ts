@@ -146,15 +146,39 @@ router.get("/auth/callback", async (req, res) => {
     });
 
     // --- Slutgiltig redirect (för inbäddad app) ---
-    if (!res.headersSent) {
-      const host = req.query.host;
-      res.setHeader("Content-Type", "text/html");
-      res.send(`
+  // --- Slutgiltig redirect (för inbäddad app) ---
+if (!res.headersSent) {
+  const host = req.query.host;
+  res.setHeader("Content-Type", "text/html");
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+        <script src="https://unpkg.com/@shopify/app-bridge-utils@2"></script>
+      </head>
+      <body>
         <script>
-          window.top.location.href = "/?shop=${shop}&host=${host}";
+          const AppBridge = window['app-bridge'];
+          const Redirect = AppBridge.actions.Redirect;
+
+          const app = AppBridge.createApp({
+            apiKey: "${process.env.SHOPIFY_API_KEY}",
+            host: new URLSearchParams(window.location.search).get("host"),
+          });
+
+          // ✅ Viktigt: använd App Bridge redirect till din root med host-parametrar
+          Redirect.create(app).dispatch(
+            Redirect.Action.APP,
+            "/?shop=${shop}&host=${host}"
+          );
         </script>
-      `);
-    }
+      </body>
+    </html>
+  `);
+}
+
+    
   } catch (error) {
     console.error("❌ Auth callback error:", error);
     if (!res.headersSent) {
