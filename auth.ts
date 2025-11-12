@@ -29,11 +29,16 @@ router.get("/auth", async (req, res) => {
 
   if (!shop) return res.status(400).send("Missing shop parameter");
 
-  if (!req.cookies.shopifyTopLevelOAuth) {
+  // 🧠 Kontrollera om vi körs i en iframe (Shopify Admin)
+  const embedded = req.query.embedded === "1";
+
+  if (embedded || !req.cookies.shopifyTopLevelOAuth) {
+    console.log("🔁 Redirectar till toplevel för OAuth...");
     return res.redirect(`/auth/toplevel?shop=${shop}&host=${host}`);
   }
 
   try {
+    console.log("🚀 Startar Shopify OAuth flow...");
     await shopify.auth.begin({
       shop,
       callbackPath: "/auth/callback",
@@ -43,11 +48,10 @@ router.get("/auth", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error starting auth:", error);
-    if (!res.headersSent) {
-      return res.status(500).send("Auth start failed");
-    }
+    if (!res.headersSent) res.status(500).send("Auth start failed");
   }
 });
+
 
 // --- 2️⃣ Register shipping carrier ---
 const registerCarrier = async (shop: string, token: string): Promise<void> => {
