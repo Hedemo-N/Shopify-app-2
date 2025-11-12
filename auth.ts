@@ -1,12 +1,11 @@
 // app/auth.ts
-
 import "@shopify/shopify-api/adapters/node";
 import express from "express";
 import dotenv from "dotenv";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { supabase } from "./supabaseClient.js";
 import fetch from "node-fetch";
-import { customSessionStorage } from "./customSessionStorage.js"; // istället för memorySessionStorage
+import { customSessionStorage } from "./customSessionStorage.js";
 
 dotenv.config();
 const router = express.Router();
@@ -26,17 +25,35 @@ const shopify = shopifyApi({
 router.get("/auth", async (req, res) => {
   const shop = req.query.shop as string;
   const host = req.query.host as string;
+  const embedded = req.query.embedded === "1";
+
+  console.log("🧭 /auth startad →", { shop, host, embedded });
 
   if (!shop) return res.status(400).send("Missing shop parameter");
 
-  // 🧠 Kontrollera om vi körs i en iframe (Shopify Admin)
-  const embedded = req.query.embedded === "1";
+  // 👀 Om appen körs inuti Shopify Admin (iframe)
+  if (embedded) {
+    console.log("🪟 Upptäckt iframe – laddar utanför för OAuth...");
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <script>
+            console.log("🪟 Leaving iframe for top-level OAuth...");
+            window.top.location.href = "${process.env.SHOPIFY_APP_URL}/auth?shop=${shop}&host=${host}";
+          </script>
+        </body>
+      </html>
+    `);
+  }
 
-  if (embedded || !req.cookies.shopifyTopLevelOAuth) {
-    console.log("🔁 Redirectar till toplevel för OAuth...");
+  // 🍪 Om cookien inte finns – hoppa till toplevel
+  if (!req.cookies.shopifyTopLevelOAuth) {
+    console.log("🍪 Cookie saknas – redirectar till /auth/toplevel...");
     return res.redirect(`/auth/toplevel?shop=${shop}&host=${host}`);
   }
 
+  // 🚀 Starta OAuth
   try {
     console.log("🚀 Startar Shopify OAuth flow...");
     await shopify.auth.begin({
@@ -52,14 +69,41 @@ router.get("/auth", async (req, res) => {
   }
 });
 
+// --- 2️⃣ Callback ---
+router.get("/auth/callback", async (req, res) => {
+  console.log("📩 CALLBACK HIT → query:", req.query);
 
-// --- 2️⃣ Register shipping carrier ---
-const registerCarrier = async (shop: string, token: string): Promise<void> => {
   try {
-    const res = await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
+    const callback = await shopify.auth.callback({
+      rawRequest: req,
+      rawResponse: res,
+    });
+
+    console.log("✅ shopify.auth.callback OK");
+
+    const accessToken = callback.session.accessToken!;
+    const shop = callback.session.shop;
+
+    console.log("💾 Sparar token för:", shop);
+
+    // --- Spara token i Supabase ---
+    await supabase
+      .from("shopify_shops")
+      .upsert({
+        shop,
+        access_token: accessToken,
+        installed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+    console.log("✅ Token sparad");
+
+    // --- Registrera frakt-callback ---
+    console.log("📦 Registrerar carrier service...");
+    await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
       method: "POST",
       headers: {
-        "X-Shopify-Access-Token": token,
+        "X-Shopify-Access-Token": accessToken,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -71,128 +115,43 @@ const registerCarrier = async (shop: string, token: string): Promise<void> => {
       }),
     });
 
-    const data = await res.json();
-    console.log("📦 Carrier service registered:", data);
-  } catch (err) {
-    console.error("❌ Failed to register carrier:", err);
-  }
-};
+    console.log("📦 Carrier service klar ✅");
 
-// --- 3️⃣ Auth callback ---
-router.get("/auth/callback", async (req, res) => {
- 
-  console.log("🔁 CALLBACK HIT:", req.query);
+    // ✅ Redirect tillbaka till Shopify Admin
+    const host = req.query.host;
+    console.log("🔁 Redirectar tillbaka in i Shopify Admin med App Bridge...");
 
-  try {
-    const callback = await shopify.auth.callback({
-      rawRequest: req,
-      rawResponse: res,
-    });
+    res.setHeader("Content-Type", "text/html");
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+        </head>
+        <body>
+          <script>
+            console.log("🧭 Redirect via App Bridge tillbaka till Admin...");
+            const AppBridge = window['app-bridge'];
+            const Redirect = AppBridge.actions.Redirect;
 
-    console.log("✅ shopify.auth.callback succeeded");
+            const app = AppBridge.createApp({
+              apiKey: "${process.env.SHOPIFY_API_KEY}",
+              host: new URLSearchParams(window.location.search).get("host"),
+            });
 
-    const accessToken = callback.session.accessToken!;
-    const shop = callback.session.shop;
-
-    console.log("✅ Auth success:", { shop, accessToken });
-
-    // --- Spara till Supabase ---
-    const { data, error } = await supabase
-      .from("shopify_shops")
-      .upsert(
-        {
-          shop,
-          access_token: accessToken,
-          installed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "shop" }
-      );
-
-    if (error) {
-      console.error("❌ Supabase insert error:", error);
-    } else {
-      console.log("✅ Token sparad i Supabase:", data);
-    }
-
-    // --- Registrera frakt-callback automatiskt ---
-    await registerCarrier(shop, accessToken);
-
-    // --- Registrera webhook för orderuppdatering ---
-    await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
-      method: "POST",
-      headers: {
-        "X-Shopify-Access-Token": accessToken,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        webhook: {
-          topic: "orders/updated",
-          address: `${process.env.SHOPIFY_APP_URL}/api/webhooks/orders-create`,
-          format: "json",
-        },
-      }),
-    });
-
-    // --- Registrera webhook för avinstallation ---
-    await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
-      method: "POST",
-      headers: {
-        "X-Shopify-Access-Token": accessToken,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        webhook: {
-          topic: "app/uninstalled",
-          address: `${process.env.SHOPIFY_APP_URL}/api/webhooks/app-uninstalled`,
-          format: "json",
-        },
-      }),
-    });
-
-    // --- Slutgiltig redirect (för inbäddad app) ---
-  // --- Slutgiltig redirect (för inbäddad app) ---
-if (!res.headersSent) {
-  const host = req.query.host;
-  res.setHeader("Content-Type", "text/html");
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
-        <script src="https://unpkg.com/@shopify/app-bridge-utils@2"></script>
-      </head>
-      <body>
-        <script>
-          const AppBridge = window['app-bridge'];
-          const Redirect = AppBridge.actions.Redirect;
-
-          const app = AppBridge.createApp({
-            apiKey: "${process.env.SHOPIFY_API_KEY}",
-            host: new URLSearchParams(window.location.search).get("host"),
-          });
-
-          // ✅ Viktigt: använd App Bridge redirect till din root med host-parametrar
-          Redirect.create(app).dispatch(
-            Redirect.Action.APP,
-            "/?shop=${shop}&host=${host}"
-          );
-        </script>
-      </body>
-    </html>
-  `);
-}
-
-    
- } catch (err: any) {
-  console.error("❌ Auth callback error:", err);
-  console.error("🧠 Stack trace:", err?.stack || "Ingen stacktrace");
-
-    if (!res.headersSent) {
-      return res.status(500).send("Auth callback failed");
-    }
+            Redirect.create(app).dispatch(
+              Redirect.Action.APP,
+              "/?shop=${shop}&host=${host}"
+            );
+          </script>
+        </body>
+      </html>
+    `);
+  } catch (error: any) {
+    console.error("❌ Auth callback error:", error);
+    console.error("🧠 Stack trace:", error?.stack || error);
+    if (!res.headersSent) res.status(500).send("Auth callback failed");
   }
 });
-
 
 export default router;
