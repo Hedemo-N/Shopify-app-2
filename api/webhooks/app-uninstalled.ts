@@ -1,39 +1,57 @@
-import express from "express";
-import getRawBody from "raw-body";
+// app/webhooks/app-uninstalled.ts
+
+import express, { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const router = express.Router();
 
-router.post("/api/webhooks/app-uninstalled", async (req, res) => {
-  let rawBody;
+// 🛡️ Middleware för att verifiera webhook-signaturen
+function verifyHmac(req: Request, res: Response, next: NextFunction) {
+  const hmacHeader = req.get("X-Shopify-Hmac-Sha256");
+  const rawBody = req.body as Buffer;
 
-  try {
-    rawBody = await getRawBody(req);
-  } catch (err) {
-    console.error("❌ Failed to read raw body:", err);
-    return res.status(400).send("Invalid body");
+  if (!hmacHeader || !rawBody) {
+    console.warn("❌ Saknar HMAC-header eller raw body");
+    return res.status(400).send("Bad request");
   }
 
-  const hmacHeader = req.headers["x-shopify-hmac-sha256"] as string;
+const generatedHash = crypto
+  .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
+  .update(rawBody) // 🧩 ta bort "utf8"
+  .digest("base64");
 
-  const digest = crypto
-    .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
-    .update(rawBody)
-    .digest("base64");
 
-  if (digest !== hmacHeader) {
-    console.warn("⚠️ Webhook HMAC mismatch");
+  if (generatedHash !== hmacHeader) {
+    console.warn("🔒 HMAC mismatch");
     return res.status(401).send("Unauthorized");
   }
 
-  const payload = JSON.parse(rawBody.toString());
-  const shop = payload.domain;
+  next();
+}
 
-  console.log("🧹 App avinstallerad av:", shop);
+// 🚪 POST-endpoint för avinstallation
+router.post(
+  "/app-uninstalled",
+  express.raw({ type: "*/*" }), // 👈 Behåll raw body (viktigt för HMAC)
+  verifyHmac,
+  async (req: Request, res: Response) => {
+    try {
+      const payload = JSON.parse((req.body as Buffer).toString());
+      const shop = payload.domain;
 
-  // TODO: Rensa databasen, sessions etc
+      console.log(`🧹 App avinstallerad av: ${shop}`);
 
-  res.status(200).send("Webhook received");
-});
+      // TODO: Lägg till eventuell rensning av sessions / Supabase-data här
+
+      res.status(200).send("OK");
+    } catch (error) {
+      console.error("❌ Fel vid avinstallation:", error);
+      res.status(500).send("Serverfel");
+    }
+  }
+);
 
 export default router;

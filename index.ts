@@ -43,6 +43,8 @@ const shopify = shopifyApi({
 // --- Webhooks som kräver raw body först
 app.use("/", ordersCreateWebhook);
 app.use("/api/webhooks", appUninstalledWebhook);
+
+
 // --- JSON-parser (måste komma efter eventuella raw body routes)
 app.use(express.json());
 
