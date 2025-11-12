@@ -26,7 +26,8 @@ router.get("/auth/toplevel", (req, res) => {
     <!DOCTYPE html>
     <html>
       <head>
-        <meta http-equiv="refresh" content="0;url=/auth?shop=${shop}&host=${host}">
+       <meta http-equiv="refresh" content="0;url=${process.env.SHOPIFY_APP_URL}/auth?shop=${shop}&host=${host}">
+
       </head>
       <body>
         <p>Redirecting to authentication...</p>
