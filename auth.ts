@@ -1,83 +1,48 @@
 // app/auth.ts
-
 import "@shopify/shopify-api/adapters/node";
 import express from "express";
 import dotenv from "dotenv";
-import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
-import { supabase } from "./supabaseClient.js";
-import fetch from "node-fetch";
 import crypto from "crypto";
-import { customSessionStorage } from "./customSessionStorage.js";
+import fetch from "node-fetch";
+import { supabase } from "./supabaseClient.js";
 
 dotenv.config();
 const router = express.Router();
 
-// --- Shopify init ---
-const shopify = shopifyApi({
-  apiKey: process.env.SHOPIFY_API_KEY!,
-  apiSecretKey: process.env.SHOPIFY_API_SECRET!,
-  scopes: process.env.SHOPIFY_SCOPES!.split(","),
-  hostName: process.env.SHOPIFY_APP_URL!.replace(/https?:\/\//, ""),
-  apiVersion: ApiVersion.July24,
-  isEmbeddedApp: true,
-  sessionStorage: customSessionStorage,
-});
-
-
-// --- 1️⃣ Start OAuth utan cookie ---
+// --- 1️⃣ Start OAuth flow ---
 router.get("/auth", async (req, res) => {
-  const shop = req.query.shop as string;
-  if (!shop) return res.status(400).send("Missing shop parameter");
+  try {
+    const shop = req.query.shop as string;
+    if (!shop) return res.status(400).send("Missing shop parameter");
 
-  // generera unikt state-token
-  const state = crypto.randomBytes(16).toString("hex");
+    // Skapa unik state (läggs direkt i URL, inte i cookies)
+    const state = crypto.randomBytes(16).toString("hex");
 
-  // spara det temporärt i memory eller Supabase om du vill (valfritt)
-  req.app.locals[`state_${state}`] = { shop, created: Date.now() };
+    const redirectUri = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_API_KEY}&scope=${process.env.SHOPIFY_SCOPES}&redirect_uri=${process.env.SHOPIFY_APP_URL}/auth/callback&state=${state}`;
+    console.log("🔗 Redirecting to Shopify OAuth:", redirectUri);
 
-  // skapa Shopify OAuth URL manuellt
-  const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${
-    process.env.SHOPIFY_API_KEY
-  }&scope=${process.env.SHOPIFY_SCOPES}&redirect_uri=${
-    process.env.SHOPIFY_APP_URL
-  }/auth/callback&state=${state}`;
-
-  console.log("🔗 Redirecting to Shopify OAuth:", authUrl);
-  return res.redirect(authUrl);
+    return res.redirect(redirectUri);
+  } catch (err) {
+    console.error("❌ Auth start error:", err);
+    return res.status(500).send("Auth start failed");
+  }
 });
 
-
-// --- 2️⃣ Callback utan att kräva cookie ---
+// --- 2️⃣ OAuth callback ---
 router.get("/auth/callback", async (req, res) => {
   try {
-    const { shop, code, hmac, state } = req.query;
+    const { shop, code, state } = req.query;
 
-    if (!shop || !code || !hmac || !state) {
-      return res.status(400).send("Missing required query params");
+    console.log("📩 Callback hit with query:", req.query);
+
+    if (!shop || !code) {
+      console.error("❌ Missing shop or code in callback");
+      return res.status(400).send("Missing required params");
     }
 
-    // verifiera HMAC enligt Shopify docs
-    const params = new URLSearchParams(req.query as any);
-    const hmacValue = params.get("hmac")!;
-    params.delete("hmac");
-    const message = params.toString();
-    const generatedHmac = crypto
-      .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
-      .update(message)
-      .digest("hex");
+    console.log("🔑 Requesting access token...");
 
-    if (generatedHmac !== hmacValue) {
-      console.warn("❌ Invalid HMAC");
-      return res.status(400).send("Invalid HMAC");
-    }
-
-    // verifiera state
-    const savedState = req.app.locals[`state_${state}`];
-    if (!savedState || savedState.shop !== shop) {
-      return res.status(400).send("Invalid or expired state");
-    }
-
-    // byt code mot access token
+    // --- Utbyt code mot permanent access token ---
     const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -89,37 +54,77 @@ router.get("/auth/callback", async (req, res) => {
     });
 
     const tokenData = (await tokenResponse.json()) as { access_token: string };
+    const accessToken = tokenData.access_token;
 
-    console.log("✅ Token received:", tokenData);
+    console.log("✅ Access token received for:", shop);
 
-    // spara till Supabase
-    await supabase.from("shopify_shops").upsert({
-      shop,
-      access_token: tokenData.access_token,
-      installed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    // --- Spara token i Supabase ---
+    const { error } = await supabase.from("shopify_shops").upsert(
+      {
+        shop,
+        access_token: accessToken,
+        installed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "shop" }
+    );
+
+    if (error) {
+      console.error("❌ Supabase save error:", error);
+    } else {
+      console.log("💾 Token saved to Supabase for:", shop);
+    }
+
+    // --- Registrera carrier service ---
+    console.log("📦 Registering carrier service...");
+    const carrierRes = await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        carrier_service: {
+          name: "Blixt Delivery",
+          callback_url: `${process.env.SHOPIFY_APP_URL}/api/shipping-rates`,
+          service_discovery: true,
+        },
+      }),
     });
+    const carrierData = await carrierRes.json();
+    console.log("✅ Carrier service response:", carrierData);
 
-    // rensa state
-    delete req.app.locals[`state_${state}`];
+    // --- Avsluta: skicka in användaren i appen ---
+    console.log("🔁 Redirecting back into Shopify Admin iframe...");
 
-    // skicka tillbaka in i appen (embedded)
     res.setHeader("Content-Type", "text/html");
     res.send(`
-      <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
-      <script>
-        const AppBridge = window['app-bridge'];
-        const Redirect = AppBridge.actions.Redirect;
-        const app = AppBridge.createApp({
-          apiKey: "${process.env.SHOPIFY_API_KEY}",
-          host: new URLSearchParams(window.location.search).get("host"),
-        });
-        Redirect.create(app).dispatch(Redirect.Action.APP, "/?shop=${shop}");
-      </script>
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+        </head>
+        <body>
+          <script>
+            const AppBridge = window['app-bridge'];
+            const Redirect = AppBridge.actions.Redirect;
+
+            const app = AppBridge.createApp({
+              apiKey: "${process.env.SHOPIFY_API_KEY}",
+              host: new URLSearchParams(window.location.search).get("host"),
+            });
+
+            Redirect.create(app).dispatch(
+              Redirect.Action.APP,
+              "/?shop=${shop}&host=" + new URLSearchParams(window.location.search).get("host")
+            );
+          </script>
+        </body>
+      </html>
     `);
   } catch (error) {
-    console.error("❌ Auth callback failed:", error);
-    res.status(500).send("OAuth process failed");
+    console.error("❌ Auth callback error:", error);
+    if (!res.headersSent) res.status(500).send("Auth callback failed");
   }
 });
 

@@ -1,4 +1,3 @@
-import session from "express-session";
 import "@shopify/shopify-api/adapters/node";
 import express from "express";
 import dotenv from "dotenv";
@@ -14,34 +13,22 @@ import customersRedact from "./api/webhooks/customers-redact.js";
 import shopRedact from "./api/webhooks/shop-redact.js";
 import path from "path";
 import cookieParser from "cookie-parser";
-import { customSessionStorage } from "./customSessionStorage.js";
 import topLevelAuthRoute from "./auth/topLevel.js";
+import { customSessionStorage } from "./customSessionStorage.js";
 
 dotenv.config();
 
 const app = express();
-app.set("trust proxy", 1); // 🧠 Vercel kräver detta för secure cookies
-
-app.use(
-  session({
-    secret: process.env.SHOPIFY_API_SECRET!,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: true,         // ❗ krävs för SameSite=None
-      sameSite: "none",     // ❗ krävs för att funka i iframe
-      httpOnly: true,       // extra säkerhet
-      maxAge: 60000,        // 1 minut (räcker för OAuth)
-    },
-  })
-);
 const PORT = 3000;
 
-app.use(cookieParser());
-app.use("/", topLevelAuthRoute);
-app.use("/", authRoutes);
+// 🧠 Viktigt: Vercel kör HTTPS och kräver detta för korrekta headers
+app.set("trust proxy", 1);
 
-// --- Shopify initiering ---
+// 🧩 Middleware
+app.use(cookieParser());
+app.use(express.json());
+
+// --- Shopify init ---
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
   apiSecretKey: process.env.SHOPIFY_API_SECRET!,
@@ -52,12 +39,13 @@ const shopify = shopifyApi({
   sessionStorage: customSessionStorage,
 });
 
-// --- Webhooks som kräver raw body först ---
+// --- Routes ---
+app.use("/", topLevelAuthRoute);
+app.use("/", authRoutes);
+
+// --- Webhooks (måste vara raw innan JSON-parser används) ---
 app.use("/", ordersCreateWebhook);
 app.use("/api/webhooks", appUninstalledWebhook);
-
-// --- JSON-parser (måste komma efter eventuella raw body routes) ---
-app.use(express.json());
 
 // --- Statisk filserver ---
 app.use(express.static("public"));
@@ -68,9 +56,11 @@ app.get("/", (req, res) => {
   const host = req.query.host as string;
 
   if (shop && host) {
+    console.log("🧭 Redirecting to /auth for:", shop);
     return res.redirect(`/auth?shop=${shop}&host=${host}`);
   }
 
+  console.log("📄 Serving public/index.html");
   res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
 });
 
@@ -81,5 +71,10 @@ app.use("/api/webhooks", sendLabelEmailRouter);
 app.use("/", customersDataRequest);
 app.use("/", customersRedact);
 app.use("/", shopRedact);
+
+// --- Start ---
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
 
 export default app;
