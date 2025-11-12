@@ -1,3 +1,5 @@
+// app/auth.ts
+
 import "@shopify/shopify-api/adapters/node";
 import express from "express";
 import dotenv from "dotenv";
@@ -5,7 +7,6 @@ import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { supabase } from "./supabaseClient.js";
 import fetch from "node-fetch";
 import { customSessionStorage } from "./customSessionStorage.js"; // istället för memorySessionStorage
-
 
 dotenv.config();
 const router = express.Router();
@@ -47,7 +48,6 @@ router.get("/auth", async (req, res) => {
     }
   }
 });
-
 
 // --- 2️⃣ Register shipping carrier ---
 const registerCarrier = async (shop: string, token: string): Promise<void> => {
@@ -141,10 +141,15 @@ router.get("/auth/callback", async (req, res) => {
       }),
     });
 
-    // --- Slutgiltig redirect ---
+    // --- Slutgiltig redirect (för inbäddad app) ---
     if (!res.headersSent) {
       const host = req.query.host;
-      return res.redirect(`/?shop=${shop}&host=${host}`);
+      res.setHeader("Content-Type", "text/html");
+      res.send(`
+        <script>
+          window.top.location.href = "/?shop=${shop}&host=${host}";
+        </script>
+      `);
     }
   } catch (error) {
     console.error("❌ Auth callback error:", error);
