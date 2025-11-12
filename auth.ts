@@ -1,4 +1,3 @@
-// app/auth.ts
 import "@shopify/shopify-api/adapters/node";
 import express from "express";
 import dotenv from "dotenv";
@@ -10,7 +9,6 @@ import { customSessionStorage } from "./customSessionStorage.js";
 dotenv.config();
 const router = express.Router();
 
-// --- Shopify init ---
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
   apiSecretKey: process.env.SHOPIFY_API_SECRET!,
@@ -25,53 +23,62 @@ const shopify = shopifyApi({
 router.get("/auth", async (req, res) => {
   const shop = req.query.shop as string;
   const host = req.query.host as string;
-  const embedded = req.query.embedded === "1";
-
-  console.log("🧭 /auth startad →", { shop, host, embedded });
 
   if (!shop) return res.status(400).send("Missing shop parameter");
 
-  // 👀 Om appen körs inuti Shopify Admin (iframe)
-  if (embedded) {
-    console.log("🪟 Upptäckt iframe – laddar utanför för OAuth...");
-    return res.send(`
-      <!DOCTYPE html>
-      <html>
-        <body>
-          <script>
-            console.log("🪟 Leaving iframe for top-level OAuth...");
-            window.top.location.href = "${process.env.SHOPIFY_APP_URL}/auth?shop=${shop}&host=${host}";
-          </script>
-        </body>
-      </html>
-    `);
-  }
+  // 📜 Skapa en enkel state-token som Shopify skickar tillbaka
+  const state = Math.random().toString(36).substring(2, 15);
+  console.log("🔑 Generated state:", state);
 
-  // 🍪 Om cookien inte finns – hoppa till toplevel
-  if (!req.cookies.shopifyTopLevelOAuth) {
-    console.log("🍪 Cookie saknas – redirectar till /auth/toplevel...");
-    return res.redirect(`/auth/toplevel?shop=${shop}&host=${host}`);
-  }
-
-  // 🚀 Starta OAuth
   try {
-    console.log("🚀 Startar Shopify OAuth flow...");
-    await shopify.auth.begin({
+    const authUrl = await shopify.auth.begin({
       shop,
       callbackPath: "/auth/callback",
       isOnline: true,
       rawRequest: req,
       rawResponse: res,
     });
-  } catch (error) {
-    console.error("❌ Error starting auth:", error);
+
+    // ✨ Shopify kräver redirect, men vi lägger till state-parametern själva
+    const redirectUrl = `${authUrl}&state=${state}`;
+    console.log("🚀 Redirecting to:", redirectUrl);
+    return res.redirect(redirectUrl);
+
+  } catch (err: any) {
+    console.error("❌ Error starting auth:", err);
     if (!res.headersSent) res.status(500).send("Auth start failed");
   }
 });
 
-// --- 2️⃣ Callback ---
+
+// --- 2️⃣ Register shipping carrier ---
+const registerCarrier = async (shop: string, token: string): Promise<void> => {
+  try {
+    const res = await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        carrier_service: {
+          name: "Blixt Delivery",
+          callback_url: `${process.env.SHOPIFY_APP_URL}/api/shipping-rates`,
+          service_discovery: true,
+        },
+      }),
+    });
+
+    const data = await res.json();
+    console.log("📦 Carrier service registered:", data);
+  } catch (err) {
+    console.error("❌ Failed to register carrier:", err);
+  }
+};
+
+// --- 3️⃣ Auth callback ---
 router.get("/auth/callback", async (req, res) => {
-  console.log("📩 CALLBACK HIT → query:", req.query);
+  console.log("📩 CALLBACK HIT →", req.query);
 
   try {
     const callback = await shopify.auth.callback({
@@ -86,41 +93,24 @@ router.get("/auth/callback", async (req, res) => {
 
     console.log("💾 Sparar token för:", shop);
 
-    // --- Spara token i Supabase ---
-    await supabase
+    const { error } = await supabase
       .from("shopify_shops")
       .upsert({
         shop,
         access_token: accessToken,
         installed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      });
+      }, { onConflict: "shop" });
 
-    console.log("✅ Token sparad");
+    if (error) console.error("❌ Supabase insert error:", error);
+    else console.log("✅ Token sparad");
 
     // --- Registrera frakt-callback ---
-    console.log("📦 Registrerar carrier service...");
-    await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
-      method: "POST",
-      headers: {
-        "X-Shopify-Access-Token": accessToken,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        carrier_service: {
-          name: "Blixt Delivery",
-          callback_url: `${process.env.SHOPIFY_APP_URL}/api/shipping-rates`,
-          service_discovery: true,
-        },
-      }),
-    });
+    await registerCarrier(shop, accessToken);
 
-    console.log("📦 Carrier service klar ✅");
-
-    // ✅ Redirect tillbaka till Shopify Admin
-    const host = req.query.host;
+    // --- Redirect tillbaka till Shopify Admin ---
     console.log("🔁 Redirectar tillbaka in i Shopify Admin med App Bridge...");
-
+    const host = req.query.host;
     res.setHeader("Content-Type", "text/html");
     res.send(`
       <!DOCTYPE html>
@@ -130,26 +120,21 @@ router.get("/auth/callback", async (req, res) => {
         </head>
         <body>
           <script>
-            console.log("🧭 Redirect via App Bridge tillbaka till Admin...");
             const AppBridge = window['app-bridge'];
             const Redirect = AppBridge.actions.Redirect;
-
             const app = AppBridge.createApp({
               apiKey: "${process.env.SHOPIFY_API_KEY}",
               host: new URLSearchParams(window.location.search).get("host"),
             });
-
-            Redirect.create(app).dispatch(
-              Redirect.Action.APP,
-              "/?shop=${shop}&host=${host}"
-            );
+            Redirect.create(app).dispatch(Redirect.Action.APP, "/?shop=${shop}&host=${host}");
           </script>
         </body>
       </html>
     `);
-  } catch (error: any) {
-    console.error("❌ Auth callback error:", error);
-    console.error("🧠 Stack trace:", error?.stack || error);
+
+  } catch (err: any) {
+    console.error("❌ Auth callback error:", err.message);
+    console.error("🧠 Stack trace:", err.stack || "Ingen stacktrace");
     if (!res.headersSent) res.status(500).send("Auth callback failed");
   }
 });
