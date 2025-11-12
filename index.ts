@@ -63,9 +63,16 @@ app.use("/", customersRedact);
 app.use("/", shopRedact);
 
 // --- Testendpoint
-app.get("/api/ping", (req, res) => {
-  console.log("📡 Ping mottagen med token:", req.headers.authorization);
-  res.json({ message: "Token mottagen!" });
+app.get("/", (req, res) => {
+  const shop = req.query.shop as string;
+  const host = req.query.host as string;
+
+  if (shop && host) {
+    return res.redirect(`/auth?shop=${shop}&host=${host}`);
+  }
+
+  res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
 });
+
 
 export default app;
