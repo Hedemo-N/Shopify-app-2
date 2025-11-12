@@ -9,13 +9,18 @@ router.get("/auth/toplevel", (req, res) => {
     return res.status(400).send("Missing shop or host");
   }
 
+  // 🧠 Viktigt: tillåt cookies i embedded apps
   res.cookie("shopifyTopLevelOAuth", "1", {
     httpOnly: true,
     secure: true,
-    sameSite: "strict",
+    sameSite: "none",
   });
 
-  // 🔧 Shopify Admin blockerar window.top.location — använd meta refresh
+  // Förhindra cache-loopar
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Pragma", "no-cache");
+
+  // 🔁 Meta refresh istället för window.top
   res.setHeader("Content-Type", "text/html");
   res.send(`
     <!DOCTYPE html>
