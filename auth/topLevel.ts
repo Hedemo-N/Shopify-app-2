@@ -20,21 +20,30 @@ router.get("/auth/toplevel", (req, res) => {
   res.setHeader("Content-Type", "text/html");
 
   res.send(`
-  <!DOCTYPE html>
-  <html>
-    <body>
-      <form id="redirectForm" method="GET" action="${process.env.SHOPIFY_APP_URL}/auth">
-        <input type="hidden" name="shop" value="${shop}" />
-        <input type="hidden" name="host" value="${host}" />
-      </form>
-      <script>
-        document.getElementById("redirectForm").target = "_top";
-        document.getElementById("redirectForm").submit();
-      </script>
-    </body>
-  </html>
-`);
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+        <script src="https://unpkg.com/@shopify/app-bridge-utils@2"></script>
+      </head>
+      <body>
+        <script>
+          const AppBridge = window['app-bridge'];
+          const Redirect = AppBridge.actions.Redirect;
 
+          const app = AppBridge.createApp({
+            apiKey: "${process.env.SHOPIFY_API_KEY}",
+            host: new URLSearchParams(window.location.search).get("host"),
+          });
+
+          Redirect.create(app).dispatch(
+            Redirect.Action.REMOTE,
+            "${process.env.SHOPIFY_APP_URL}/auth?shop=${shop}&host=${host}"
+          );
+        </script>
+      </body>
+    </html>
+  `);
 });
 
 export default router;
