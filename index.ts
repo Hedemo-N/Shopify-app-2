@@ -14,6 +14,8 @@ import shopRedact from "./api/webhooks/shop-redact.js";
 import path from "path";
 import cookieParser from "cookie-parser";
 import { customSessionStorage } from "./customSessionStorage.js"; // istället för memorySessionStorage
+import topLevelAuthRoute from "./auth/topLevel.js";
+
 
 
 dotenv.config();
@@ -21,6 +23,7 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 app.use(cookieParser()); // 🧠 Viktigt: måste vara tidigt för att Shopify ska hitta OAuth-cookie
+app.use("/", topLevelAuthRoute);
 app.use("/", authRoutes);
 // --- Shopify initiering ---
 

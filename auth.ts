@@ -23,11 +23,16 @@ const shopify = shopifyApi({
 
 // --- 1️⃣ Start auth flow ---
 router.get("/auth", async (req, res) => {
-  try {
-    const shop = req.query.shop as string;
-    if (!shop) return res.status(400).send("Missing shop parameter!");
+  const shop = req.query.shop as string;
+  const host = req.query.host as string;
 
-    // Shopify SDK sköter redirecten internt
+  if (!shop) return res.status(400).send("Missing shop parameter");
+
+  if (!req.cookies.shopifyTopLevelOAuth) {
+    return res.redirect(`/auth/toplevel?shop=${shop}&host=${host}`);
+  }
+
+  try {
     await shopify.auth.begin({
       shop,
       callbackPath: "/auth/callback",
@@ -35,8 +40,6 @@ router.get("/auth", async (req, res) => {
       rawRequest: req,
       rawResponse: res,
     });
-
-    // ❌ Ta bort: return res.redirect(authUrl);
   } catch (error) {
     console.error("❌ Error starting auth:", error);
     if (!res.headersSent) {
