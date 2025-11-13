@@ -10,10 +10,23 @@ dotenv.config();
 const router = express.Router();
 
 // --- 1️⃣ Start OAuth flow ---
+// --- 1️⃣ Start OAuth flow ---
 router.get("/auth", async (req, res) => {
   try {
     const shop = req.query.shop as string;
-    if (!shop) return res.status(400).send("Missing shop parameter");
+    const host = req.query.host as string;
+
+    if (!shop || !host) {
+      return res.status(400).send("Missing shop or host");
+    }
+
+    // 🚧 Om ingen cookie => kör TopLevel-redirect
+    if (!req.cookies["shopifyTopLevelOAuth"]) {
+      console.log("🔁 Redirecting to top-level auth...");
+      return res.redirect(`/auth/toplevel?shop=${shop}&host=${host}`);
+    }
+    // fortsätt annars med vanliga redirecten till Shopify OAuth...
+console.log("✅ Cookie detected, proceeding with OAuth for", shop);
 
     // Skapa unik state (läggs direkt i URL, inte i cookies)
     const state = crypto.randomBytes(16).toString("hex");
