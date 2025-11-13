@@ -2,7 +2,7 @@
 <html lang="sv">
   <head>
     <meta charset="UTF-8" />
-    <title>Blixt Admin</title>
+    <title>Blixt Delivery Admin</title>
     <script src="https://unpkg.com/@shopify/app-bridge@3.7.4/umd/index.js"></script>
     <script src="https://unpkg.com/@shopify/app-bridge-utils@2.1.5/umd/index.js"></script>
   </head>
@@ -12,32 +12,48 @@
     <script>
       console.log("✅ JS körs!");
 
-      const AppBridge = window["app-bridge"];
-      const AppBridgeUtils = window["app-bridge-utils"];
+      // 🚧 Om appen inte körs i Shopify iframe -> tvinga inbäddning
+      const params = new URLSearchParams(window.location.search);
+      const shop = params.get("shop");
+      const host = params.get("host");
 
-      const createApp = AppBridge.createApp;
-      const getSessionToken = AppBridgeUtils.getSessionToken;
+      if (window.top === window.self) {
+        console.warn("🚫 Appen körs utanför Shopify iframe — omdirigerar...");
+        if (shop) {
+          window.location.href = `/auth?shop=${shop}&host=${host}`;
+        } else {
+          document.body.innerHTML += "<p>❌ Saknar shop-parameter.</p>";
+        }
+      } else {
+        console.log("🪟 Appen körs i iframe ✅");
 
-      const app = createApp({
-        apiKey: "f1ad1b493f65f36ffbc728cb00e594fe",
-        host: new URLSearchParams(location.search).get("host"),
-        forceRedirect: true,
-      });
+        const AppBridge = window["app-bridge"];
+        const AppBridgeUtils = window["app-bridge-utils"];
 
-      console.log("🚀 Försöker hämta token...");
-      getSessionToken(app)
-        .then((token) => {
-          console.log("🔑 Token:", token);
-          return fetch("/api/ping", {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-        })
-        .then(res => res.json())
-        .then(data => console.log("📬 Svar från ping:", data))
-        .catch(err => console.error("❌ Ping-fel:", err));
+        const createApp = AppBridge.createApp;
+        const getSessionToken = AppBridgeUtils.getSessionToken;
+
+        const app = createApp({
+          apiKey: "f1ad1b493f65f36ffbc728cb00e594fe",
+          host: host,
+          forceRedirect: true,
+        });
+
+        console.log("🚀 Försöker hämta session token...");
+        getSessionToken(app)
+          .then((token) => {
+            console.log("🔑 Token:", token);
+            return fetch("/api/ping", {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+          })
+          .then((res) => res.json())
+          .then((data) => console.log("📬 Svar från ping:", data))
+          .catch((err) => console.error("❌ Ping-fel:", err));
+      }
     </script>
   </body>
 </html>
