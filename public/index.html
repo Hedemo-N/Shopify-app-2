@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <title>Blixt Delivery Admin</title>
     <script src="https://unpkg.com/@shopify/app-bridge@3.7.4/umd/index.js"></script>
-    <script src="https://unpkg.com/@shopify/app-bridge-utils@2.1.5/umd/index.js"></script>
+    <script src="https://unpkg.com/@shopify/app-bridge-utils@3.7.4/umd/index.js"></script>
   </head>
   <body>
     <h1>Blixt Delivery Admin</h1>
@@ -12,7 +12,6 @@
     <script>
       console.log("✅ JS körs!");
 
-      // 🚧 Om appen inte körs i Shopify iframe -> tvinga inbäddning
       const params = new URLSearchParams(window.location.search);
       const shop = params.get("shop");
       const host = params.get("host");
@@ -29,13 +28,12 @@
 
         const AppBridge = window["app-bridge"];
         const AppBridgeUtils = window["app-bridge-utils"];
-
-        const createApp = AppBridge.createApp;
-        const getSessionToken = AppBridgeUtils.getSessionToken;
+        const { createApp } = AppBridge;
+        const { getSessionToken } = AppBridgeUtils;
 
         const app = createApp({
           apiKey: "f1ad1b493f65f36ffbc728cb00e594fe",
-          host: host,
+          host,
           forceRedirect: true,
         });
 
@@ -45,9 +43,7 @@
             console.log("🔑 Token:", token);
             return fetch("/api/ping", {
               method: "GET",
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
+              headers: { Authorization: `Bearer ${token}` },
             });
           })
           .then((res) => res.json())
