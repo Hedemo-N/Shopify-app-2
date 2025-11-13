@@ -53,8 +53,23 @@ router.get("/auth/callback", async (req, res) => {
       }),
     });
 
-    const tokenData = (await tokenResponse.json()) as { access_token: string };
-    const accessToken = tokenData.access_token;
+   const text = await tokenResponse.text();
+console.log("🔍 Raw token response:", text);
+
+let accessToken: string | undefined;
+try {
+  const tokenData = JSON.parse(text) as { access_token?: string; error?: any };
+  if (!tokenData.access_token) {
+    console.error("❌ No access_token in response:", tokenData);
+    return res.status(500).send("Shopify did not return an access_token");
+  }
+  accessToken = tokenData.access_token;
+  console.log("✅ Access token received for:", shop);
+} catch (err) {
+  console.error("❌ Could not parse Shopify token response (likely HTML):", err);
+  return res.status(500).send("Invalid token response from Shopify");
+}
+
 
     console.log("✅ Access token received for:", shop);
 
