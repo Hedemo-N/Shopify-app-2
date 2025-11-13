@@ -1,14 +1,22 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "f1ad1b493f65f36ffbc728cb00e594fe"
+name = "Blixt Delivery"
+application_url = "https://blixt-app.vercel.app/auth"
+embedded = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_fulfillments,write_fulfillments,read_locations,read_orders,write_shipping"
+optional_scopes = [ ]
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [ "https://blixt-app.vercel.app/auth/callback" ]
+
 [webhooks]
-api_version = "2024-07"
+api_version = "2025-10"
 
 [[webhooks.subscriptions]]
-topic = "customers/data_request"
-path = "/api/webhooks/customers-data-request"
-
-[[webhooks.subscriptions]]
-topic = "customers/redact"
-path = "/api/webhooks/customers-redact"
-
-[[webhooks.subscriptions]]
-topic = "shop/redact"
-path = "/api/webhooks/shop-redact"
+compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+uri = "https://blixt-app.vercel.app/api/webhooks"

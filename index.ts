@@ -15,6 +15,8 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import topLevelAuthRoute from "./auth/topLevel.js";
 import { customSessionStorage } from "./customSessionStorage.js";
+import complianceWebhook from "./api/webhooks/compliance.js";
+
 
 dotenv.config();
 
@@ -26,6 +28,8 @@ app.set("trust proxy", 1);
 
 // 🧩 Middleware
 app.use(cookieParser());
+app.use("/api/webhooks", complianceWebhook);
+
 app.use(express.json());
 
 // --- Shopify init ---
