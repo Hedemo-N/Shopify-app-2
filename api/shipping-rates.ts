@@ -107,6 +107,8 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
   payload?.rate?.shop ||
   payload?.shop ||
   "";
+console.log("RAW HEADERS:", req.headers);
+console.log("RAW BODY:", req.body);
 
 const shopDomain = shopDomainRaw.trim().toLowerCase(); // 👈 ta bort mellanslag, säkra små bokstäver
 
