@@ -102,11 +102,14 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
     const payload = req.body as any;
     const headers = req.headers as Record<string, string | undefined>;
 
-    const shopDomain: string | null =
-      headers["x-shopify-shop-domain"] ||
-      payload?.rate?.shop ||
-      payload?.shop ||
-      null;
+    const shopDomainRaw =
+  headers["x-shopify-shop-domain"] ||
+  payload?.rate?.shop ||
+  payload?.shop ||
+  "";
+
+const shopDomain = shopDomainRaw.trim().toLowerCase(); // 👈 ta bort mellanslag, säkra små bokstäver
+
 
     if (!shopDomain) {
       res.status(400).json({ error: "Missing shop domain" });
