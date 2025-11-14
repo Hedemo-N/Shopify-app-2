@@ -146,6 +146,14 @@ const formatTime = (time: string | null | undefined): string => {
   return `${pad(hour)}:${pad(minute)}`;
 };
 
+const isBeforeCutoff = (cutoff: string | null, now: Date): boolean => {
+  if (!cutoff) return false;
+  const hour = Number(cutoff);
+  if (!Number.isFinite(hour)) return false;
+  return now.getHours() < hour;
+};
+
+
 const cutoffOmbud = formatTime(shop?.cutoff_time_ombud);
 const cutoffEvening = formatTime(shop?.cutoff_time_evening);
 
@@ -213,17 +221,10 @@ if (hasAvailableCourier) {
     max_delivery_date: slotEnd.toISOString(),
   });
 }
-const isBeforeCutoff = (cutoff: string | null): boolean => {
-  if (!cutoff) return false;
-  const hour = Number(cutoff);
-  if (!Number.isFinite(hour)) return false;
 
-  const now = new Date();
-  return now.getHours() < hour;
-};
 // 💡 Lägg till kvällsleverans alltid (eller gör egen check om du vill)
 rates.push({
-  service_name: isBeforeCutoff(shop?.cutoff_time_evening)
+  service_name: isBeforeCutoff(shop?.cutoff_time_evening, now)
     ? "🌱BLIXT Hemleverans kväll 17–22 Leverans idag!🌱"
     : "🌱BLIXT Hemleverans kväll 17–22🌱",
   service_code: "blixt_home_evening",
@@ -302,7 +303,7 @@ const deliveryTime = new Date(now.getTime() + 4 * 60 * 60 * 1000); // Ex: 4 timm
 
 
         rates.push({
-          service_name: isBeforeCutoff(shop?.cutoff_time_ombud)
+          service_name: isBeforeCutoff(shop?.cutoff_time_ombud, now)
           ? `🌱BLIXT Cykelleverans ${index + 1} ${box.ombud_name} (${Math.round(box.distance)} m) Leverans idag!🌱`
           : `🌱BLIXT Cykelleverans ${index + 1} ${box.ombud_name} (${Math.round(box.distance)} m)`,
           service_code: `blixt_box_${box.id}`,
