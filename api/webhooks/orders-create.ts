@@ -139,7 +139,7 @@ router.post(
 
     const { data: shopRow, error: shopError } = await supabase
   .from("shopify_shops")
-  .select("user_id, email")
+  .select("id, user_id, Butiksemail")
   .eq("shop", shopDomain)
   .single();
 
@@ -190,6 +190,7 @@ if (existingOrder) {
           {
             order_type: orderType,
             shopify_order_id: order.id,
+            source: "shopify",
             name: `${order.shipping_address?.first_name ?? ""} ${order.shipping_address?.last_name ?? ""}`,
             address1: order.shipping_address?.address1 ?? "",
             postalnumber: order.shipping_address?.zip ?? "",
@@ -200,7 +201,7 @@ if (existingOrder) {
             order.phone ||
             "",
             custom_field: order.note ?? "",
-            user_id: userId,
+            user_id: shopRow?.id,
             ordercreatedtime: new Date().toISOString(),
             numberofkollin: order.line_items?.length ?? 1,
             status: "kommande",
@@ -340,7 +341,7 @@ if (pdfUrl) {
   .eq("id", savedOrder.id);
 
   // 🔹 Skicka e-post med etiketten
-const shopEmail = shopRow?.email;
+const shopEmail = shopRow?.Butiksemail;
 
 const payload = {
   to: shopEmail,
