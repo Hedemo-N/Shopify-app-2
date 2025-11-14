@@ -122,6 +122,24 @@ try {
     const carrierData = await carrierRes.json();
     console.log("✅ Carrier service response:", carrierData);
 
+
+    console.log("📬 Registering order create webhook...");
+
+await fetch(`https://${shop}/admin/api/2024-10/webhooks.json`, {
+  method: "POST",
+  headers: {
+    "X-Shopify-Access-Token": accessToken,
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    webhook: {
+      topic: "orders/create",
+      address: `${process.env.SHOPIFY_APP_URL}/api/webhooks/orders-create`,
+      format: "json"
+    }
+  })
+}).then(r => r.json()).then(d => console.log("📬 Webhook result:", d));
+
     // --- Avsluta: skicka in användaren i appen ---
     console.log("🔁 Redirecting back into Shopify Admin iframe...");
 
