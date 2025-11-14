@@ -118,6 +118,7 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
       .select("user_id")
       .eq("shop", shopDomain)
       .single();
+console.log("🛒 Hittad shop:", shop);
 
     const { data: profile } = await supabase
       .from("profiles")
