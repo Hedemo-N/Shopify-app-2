@@ -224,7 +224,7 @@ const isBeforeCutoff = (cutoff: string | null): boolean => {
 // 💡 Lägg till kvällsleverans alltid (eller gör egen check om du vill)
 rates.push({
   service_name: isBeforeCutoff(shop?.cutoff_time_evening)
-    ? "🌱BLIXT Hemleverans kväll 17–22 (Leverans idag!)🌱"
+    ? "🌱BLIXT Hemleverans kväll 17–22 Leverans idag!🌱"
     : "🌱BLIXT Hemleverans kväll 17–22🌱",
   service_code: "blixt_home_evening",
   total_price: String(homeEvening),
