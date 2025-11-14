@@ -117,7 +117,7 @@ console.log("🔍 Header shop-domain:", shopDomain);
  const { data: shop } = await supabase
   .from("shopify_shops")
   .select("pris_ombud, pris_hemkvall, pris_hem2h, number_box, cutoff_time_evening, cutoff_time_ombud")
-  .eq("shop", shopDomain)
+  .eq("shop", shopDomain.trim())
   .single();
 
 console.log("🛒 Hittad shop:", shop);
