@@ -112,31 +112,27 @@ router.post("/api/shipping-rates", async (req: Request, res: Response): Promise<
       res.status(400).json({ error: "Missing shop domain" });
       return;
     }
+console.log("🔍 Header shop-domain:", shopDomain);
 
-    const { data: shop } = await supabase
-      .from("shopify_shops")
-      .select("user_id")
-      .eq("shop", shopDomain)
-      .single();
+ const { data: shop } = await supabase
+  .from("shopify_shops")
+  .select("pris_ombud, pris_hemkvall, pris_hem2h, number_box, cutoff_time_evening, cutoff_time_ombud")
+  .eq("shop", shopDomain)
+  .single();
+
 console.log("🛒 Hittad shop:", shop);
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("pris_ombud, pris_hemkvall, pris_hem2h, number_box, cutoff_time_evening, cutoff_time_ombud")
-      .eq("_id", shop?.user_id)
-      .single();
-
-      // 🔍 Kolla om det finns tillgänglig kurir för 2h
-const { data: courierData, error: courierError } = await supabase
+// 🔍 Kolla om det finns tillgänglig kurir för 2h
+const { data: courierData } = await supabase
   .from("couriers")
   .select("user_id")
   .eq("aktiv", "aktiv")
   .eq("leveranstyp", "hemleverans");
 
-
 const hasAvailableCourier = courierData && courierData.length > 0;
 console.log("🚚 Tillgängliga kurirer:", courierData?.length);
 console.log("🕵️‍♂️ courierData:", courierData);
+
 const formatTime = (time: string | null | undefined): string => {
   if (!time) return "";
   const parts = String(time).split(":").map(Number);
@@ -145,21 +141,21 @@ const formatTime = (time: string | null | undefined): string => {
   return `${pad(hour)}:${pad(minute)}`;
 };
 
-
-
-const cutoffOmbud = formatTime(profile?.cutoff_time_ombud);
-const cutoffEvening = formatTime(profile?.cutoff_time_evening);
+const cutoffOmbud = formatTime(shop?.cutoff_time_ombud);
+const cutoffEvening = formatTime(shop?.cutoff_time_evening);
 
 console.log("⏱️ Cutoff tider:", {
   cutoffOmbud,
   cutoffEvening,
-  rawOmbud: profile?.cutoff_time_ombud,
-  rawEvening: profile?.cutoff_time_evening,
+  rawOmbud: shop?.cutoff_time_ombud,
+  rawEvening: shop?.cutoff_time_evening,
 });
-    const home2h = toOre(profile?.pris_hem2h ?? 99, 9900);
-    const homeEvening = toOre(profile?.pris_hemkvall ?? 65, 6500);
-    const ombud = toOre(profile?.pris_ombud ?? 45, 4500);
-    const boxCount = Number(profile?.number_box) || 0;
+
+const home2h = toOre(shop?.pris_hem2h ?? 99, 9900);
+const homeEvening = toOre(shop?.pris_hemkvall ?? 65, 6500);
+const ombud = toOre(shop?.pris_ombud ?? 45, 4500);
+const boxCount = Number(shop?.number_box) || 0;
+
 
     const postcode = (payload?.rate?.destination?.postal_code || "").replace(/\s/g, "");
     const street = payload?.rate?.destination?.address1 || "";
