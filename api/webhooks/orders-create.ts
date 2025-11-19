@@ -328,7 +328,7 @@ if (pdfUrl) {
   .eq("id", savedOrder.id);
 
   // 🔹 Skicka e-post med etiketten
-const shopEmail = shopRow?.Butiksemail;
+const shopEmail = shopRow?.butiksemail;
 
 const payload = {
   to: shopEmail,
