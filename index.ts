@@ -16,22 +16,26 @@ import cookieParser from "cookie-parser";
 import topLevelAuthRoute from "./auth/topLevel.js";
 import { customSessionStorage } from "./customSessionStorage.js";
 import complianceWebhook from "./api/webhooks/compliance.js";
-
+import { verifySessionToken } from "./middleware/verifySessionToken.js";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
-// 🧠 Viktigt: Vercel kör HTTPS och kräver detta för korrekta headers
+// 🧠 Viktigt: Vercel kör HTTPS
 app.set("trust proxy", 1);
+
+// --- RAW webhook först
 app.use("/", ordersCreateWebhook);
-// 🧩 Middleware
+
+// --- Middleware
 app.use(cookieParser());
-
-
 app.use(express.json());
-app.use("/api/webhooks", complianceWebhook);
+
+// 🛡 Session token-verifiering på ALLA /api requests
+app.use("/api", verifySessionToken);
+
 // --- Shopify init ---
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
@@ -47,28 +51,26 @@ const shopify = shopifyApi({
 app.use("/", topLevelAuthRoute);
 app.use("/", authRoutes);
 
-// --- Webhooks (måste vara raw innan JSON-parser används) ---
-
+// Webhooks
+app.use("/api/webhooks", complianceWebhook);
 app.use("/api/webhooks", appUninstalledWebhook);
 
-// --- Statisk filserver ---
+// Static files
 app.use(express.static("public"));
 
-// --- Root: redirect vid installation annars index.html ---
+// Root
 app.get("/", (req, res) => {
   const shop = req.query.shop as string;
   const host = req.query.host as string;
 
   if (shop && host) {
-    console.log("🧭 Redirecting to /auth for:", shop);
     return res.redirect(`/auth?shop=${shop}&host=${host}`);
   }
 
-  console.log("📄 Serving public/index.html");
   res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
 });
 
-// --- API och webhooks ---
+// API endpoints
 app.use("/api", ordersRoute);
 app.use("/", shippingRatesRoutes);
 app.use("/api/webhooks", sendLabelEmailRouter);
@@ -76,7 +78,7 @@ app.use("/", customersDataRequest);
 app.use("/", customersRedact);
 app.use("/", shopRedact);
 
-// --- Start ---
+// Start
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
