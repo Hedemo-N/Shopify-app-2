@@ -34,7 +34,11 @@ app.use(cookieParser());
 app.use(express.json());
 
 // 🛡 Session token-verifiering på ALLA /api requests
-app.use("/api", verifySessionToken);
+app.use("/api", (req, res, next) => {
+  if (req.path === "/shipping-rates") return next(); // ❗ släpp igenom shipping-rates
+  return verifySessionToken(req, res, next);
+});
+
 
 // --- Shopify init ---
 const shopify = shopifyApi({
