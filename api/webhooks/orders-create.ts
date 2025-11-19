@@ -113,17 +113,19 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
 
 
 // 🔹 Webhook
+// 🔹 Webhook
 router.post(
   "/api/webhooks/orders-create",
-  express.raw({ type: "application/json" }),
+  express.raw({ type: "application/json" }), // req.body är nu en Buffer
   async (req: Request, res: Response) => {
     const hmacHeader = req.get("X-Shopify-Hmac-Sha256") as string;
-    const body = req.body;
+    const rawBody: Buffer = req.body; // <-- viktigt
 
     try {
+      // *** FIXEN: .update(rawBody) UTAN "utf8" ***
       const generatedHmac = crypto
         .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
-        .update(body, "utf8")
+        .update(rawBody) // <-- detta var problemet!
         .digest("base64");
 
       if (generatedHmac !== hmacHeader) {
@@ -131,10 +133,16 @@ router.post(
         return res.status(401).send("Unauthorized");
       }
 
-      const order = JSON.parse(body.toString());
+      // Shopify payload måste parsas manuellt
+      const order = JSON.parse(rawBody.toString("utf8"));
+
       console.log("🧾 Ny order från Shopify:", order.name);
       console.log("📦 Full Shopify-order:", JSON.stringify(order, null, 2));
-      const shopDomain = req.get("X-Shopify-Shop-Domain"); // 👈 e.g. "hedens-skor.myshopify.com"
+
+      const shopDomain = req.get("X-Shopify-Shop-Domain");
+
+      // ✔️ Resten av din kod är oförändrad
+      // ...
 
 
     const { data: shopRow, error: shopError } = await supabase
