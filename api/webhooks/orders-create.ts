@@ -126,7 +126,7 @@ console.log("LENGTH →", shopDomain?.length);
 
     const { data: shopRow, error: shopError } = await supabase
   .from("shopify_shops")
-  .select("id, user_id, Butiksemail")
+  .select("id, user_id, butiksemail")
   .eq("shop", shopDomain)
   .single();
 
