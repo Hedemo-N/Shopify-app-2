@@ -121,7 +121,8 @@ router.post(
       console.log("🧾 Ny order från Shopify:", order.name);
       console.log("📦 Full Shopify-order:", JSON.stringify(order, null, 2));
       const shopDomain = req.get("X-Shopify-Shop-Domain"); // 👈 e.g. "hedens-skor.myshopify.com"
-
+console.log("RAW SHOP DOMAIN HEADER →", JSON.stringify(shopDomain));
+console.log("LENGTH →", shopDomain?.length);
 
     const { data: shopRow, error: shopError } = await supabase
   .from("shopify_shops")
@@ -348,8 +349,11 @@ if (pdfUrl && shopEmail) {
   headers: {
     "Content-Type": "application/json",
     "X-Custom-HMAC": hmac,
+    
   },
+  
   body: JSON.stringify(payload),
+  
 });
 
 
