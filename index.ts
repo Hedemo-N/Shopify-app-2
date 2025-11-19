@@ -25,13 +25,13 @@ const PORT = 3000;
 
 // 🧠 Viktigt: Vercel kör HTTPS och kräver detta för korrekta headers
 app.set("trust proxy", 1);
-
+app.use("/", ordersCreateWebhook);
 // 🧩 Middleware
 app.use(cookieParser());
-app.use("/api/webhooks", complianceWebhook);
+
 
 app.use(express.json());
-
+app.use("/api/webhooks", complianceWebhook);
 // --- Shopify init ---
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
@@ -48,7 +48,7 @@ app.use("/", topLevelAuthRoute);
 app.use("/", authRoutes);
 
 // --- Webhooks (måste vara raw innan JSON-parser används) ---
-app.use("/", ordersCreateWebhook);
+
 app.use("/api/webhooks", appUninstalledWebhook);
 
 // --- Statisk filserver ---
