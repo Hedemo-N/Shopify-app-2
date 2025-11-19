@@ -8,7 +8,6 @@ import path from "path";
 
 
 
-
 const router = express.Router();
 
 // 🔹 Hjälpfunktion för PDF
@@ -100,19 +99,17 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
 
 
 // 🔹 Webhook
-// 🔹 Webhook
 router.post(
   "/api/webhooks/orders-create",
-  express.raw({ type: "application/json" }), // req.body är nu en Buffer
+  express.raw({ type: "application/json" }),
   async (req: Request, res: Response) => {
     const hmacHeader = req.get("X-Shopify-Hmac-Sha256") as string;
-    const rawBody: Buffer = req.body; // <-- viktigt
+    const body = req.body;
 
     try {
-      // *** FIXEN: .update(rawBody) UTAN "utf8" ***
       const generatedHmac = crypto
         .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
-        .update(rawBody) // <-- detta var problemet!
+        .update(body)
         .digest("base64");
 
       if (generatedHmac !== hmacHeader) {
@@ -120,16 +117,10 @@ router.post(
         return res.status(401).send("Unauthorized");
       }
 
-      // Shopify payload måste parsas manuellt
-      const order = JSON.parse(rawBody.toString("utf8"));
-
+      const order = JSON.parse(body.toString());
       console.log("🧾 Ny order från Shopify:", order.name);
       console.log("📦 Full Shopify-order:", JSON.stringify(order, null, 2));
-
-      const shopDomain = req.get("X-Shopify-Shop-Domain");
-
-      // ✔️ Resten av din kod är oförändrad
-      // ...
+      const shopDomain = req.get("X-Shopify-Shop-Domain"); // 👈 e.g. "hedens-skor.myshopify.com"
 
 
     const { data: shopRow, error: shopError } = await supabase
@@ -346,7 +337,7 @@ const payload = {
 };
 const hmac = crypto
   .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
-  .update(JSON.stringify(payload))
+  .update(JSON.stringify(payload), "utf8")
   .digest("hex");
 
 
