@@ -38,7 +38,7 @@ console.log("✅ Cookie detected, proceeding with OAuth for", shop);
   } catch (err) {
     console.error("❌ Auth start error:", err);
     return res.status(500).send("Auth start failed");
-  }
+  } 
 });
 
 // --- 2️⃣ OAuth callback ---
