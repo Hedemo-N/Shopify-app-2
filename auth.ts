@@ -5,6 +5,16 @@ import dotenv from "dotenv";
 import crypto from "crypto";
 import fetch from "node-fetch";
 import { supabase } from "./supabaseClient.js";
+interface ShopifyAccessTokenResponse {
+  access_token?: string;
+  scope?: string;
+  associated_user?: {
+    id: number;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+}
 
 dotenv.config();
 const router = express.Router();
@@ -44,18 +54,14 @@ console.log("✅ Cookie detected, proceeding with OAuth for", shop);
 // --- 2️⃣ OAuth callback ---
 router.get("/auth/callback", async (req, res) => {
   try {
-    const { shop, code, state } = req.query;
-
-    console.log("📩 Callback hit with query:", req.query);
+    const { shop, code } = req.query;
 
     if (!shop || !code) {
-      console.error("❌ Missing shop or code in callback");
-      return res.status(400).send("Missing required params");
+      console.error("❌ Missing shop or code");
+      return res.status(400).send("Missing params");
     }
 
-    console.log("🔑 Requesting access token...");
-
-    // --- Utbyt code mot permanent access token ---
+    // ➤ 1. Byt code mot access token
     const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -66,46 +72,43 @@ router.get("/auth/callback", async (req, res) => {
       }),
     });
 
-   const text = await tokenResponse.text();
-console.log("🔍 Raw token response:", text);
+    const tokenData = await tokenResponse.json() as ShopifyAccessTokenResponse;
 
-let accessToken: string | undefined;
-try {
-  const tokenData = JSON.parse(text) as { access_token?: string; error?: any };
-  if (!tokenData.access_token) {
-    console.error("❌ No access_token in response:", tokenData);
-    return res.status(500).send("Shopify did not return an access_token");
-  }
-  accessToken = tokenData.access_token;
-  console.log("✅ Access token received for:", shop);
-} catch (err) {
-  console.error("❌ Could not parse Shopify token response (likely HTML):", err);
-  return res.status(500).send("Invalid token response from Shopify");
-}
+    const accessToken = tokenData.access_token;
 
-
-    console.log("✅ Access token received for:", shop);
-
-    // --- Spara token i Supabase ---
-    const { error } = await supabase.from("shopify_shops").upsert(
-      {
-        shop,
-        access_token: accessToken,
-        installed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "shop" }
-    );
-
-    if (error) {
-      console.error("❌ Supabase save error:", error);
-    } else {
-      console.log("💾 Token saved to Supabase for:", shop);
+    if (!accessToken) {
+      console.error("❌ No access token in Shopify response", tokenData);
+      return res.status(500).send("Token error");
     }
 
-    // --- Registrera carrier service ---
+    console.log("🔑 Access token received:", accessToken);
+
+    // ➤ 2. Hämta merchant user (associated_user)
+    const userData = tokenData.associated_user;
+    const merchantId = userData?.id ?? null;
+
+    console.log("👤 Shopify associated_user id:", merchantId);
+
+    // ➤ 3. Spara/uppdatera butik i Supabase
+    const { error: upsertError } = await supabase
+      .from("shopify_shops")
+      .upsert({
+        shop,
+        user_id: merchantId,
+        access_token: accessToken,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "shop" });
+
+    if (upsertError) {
+      console.error("❌ Failed to save shop:", upsertError);
+    } else {
+      console.log("💾 shopify_shops updated");
+    }
+
+    // ➤ 4. Registrera carrier API
     console.log("📦 Registering carrier service...");
-    const carrierRes = await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
+
+    await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
       method: "POST",
       headers: {
         "X-Shopify-Access-Token": accessToken,
@@ -119,15 +122,11 @@ try {
         },
       }),
     });
-    const carrierData = await carrierRes.json();
-    console.log("✅ Carrier service response:", carrierData);
 
-    // --- Avsluta: skicka in användaren i appen ---
-    console.log("🔁 Redirecting back into Shopify Admin iframe...");
+    console.log("✅ Carrier registered");
 
-    res.setHeader("Content-Type", "text/html");
+    // ➤ 5. Skicka in användaren i appen
     res.send(`
-      <!DOCTYPE html>
       <html>
         <head>
           <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
@@ -150,10 +149,10 @@ try {
         </body>
       </html>
     `);
-  } catch (error) {
-    console.error("❌ Auth callback error:", error);
-    if (!res.headersSent) res.status(500).send("Auth callback failed");
+
+  } catch (err) {
+    console.error("❌ OAuth callback error:", err);
+    res.status(500).send("OAuth failed");
   }
 });
-
 export default router;
