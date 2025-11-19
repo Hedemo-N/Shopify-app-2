@@ -5,21 +5,8 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
 import { readFile } from "fs/promises";
 import path from "path";
-import { Buffer } from "buffer";
 
 
-function isValidShopifyWebhook(req: express.Request, secret: string): boolean {
-  const hmacHeader = req.get("X-Shopify-Hmac-Sha256") || "";
-  const body = JSON.stringify(req.body);
-  const generatedHmac = crypto
-    .createHmac("sha256", secret)
-    .update(body, "utf8")
-    .digest("base64");
-  return crypto.timingSafeEqual(Buffer.from(generatedHmac), Buffer.from(hmacHeader));
-}
-
-
-// ...
 
 
 const router = express.Router();
@@ -359,7 +346,7 @@ const payload = {
 };
 const hmac = crypto
   .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
-  .update(JSON.stringify(payload), "utf8")
+  .update(JSON.stringify(payload))
   .digest("hex");
 
 
