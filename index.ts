@@ -98,10 +98,10 @@ app.get("/", async (req, res) => {
     }
 
     // 2) Shop finns men saknar user_id → visa onboarding
-    if (!shopRow.user_id) {
-      console.log("🟡 No user_id → onboarding required");
-      return res.redirect(`/onboarding?shop=${shop}&host=${host}`);
-    }
+   if (!shopRow.user_id) {
+  return res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
+}
+
 
     // 3) Shop är helt klar → visa appens dashboard
     console.log("🟢 Shop onboarded → show admin panel");
