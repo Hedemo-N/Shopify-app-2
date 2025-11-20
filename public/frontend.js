@@ -1,5 +1,8 @@
-import { createApp } from "@shopify/app-bridge";
-import { getSessionToken, authenticatedFetch } from "@shopify/app-bridge-utils";
+import { createApp } from "https://cdn.shopify.com/shopifycloud/app-bridge/v3/app-bridge.esm.js";
+import {
+  getSessionToken,
+  authenticatedFetch
+} from "https://cdn.shopify.com/shopifycloud/app-bridge/v3/app-bridge-utils.esm.js";
 
 const params = new URLSearchParams(window.location.search);
 const shop = params.get("shop");
@@ -13,6 +16,7 @@ if (window.top === window.self) {
     host,
     forceRedirect: true,
   });
+
 
   const fetchWithAuth = authenticatedFetch(app);
 
