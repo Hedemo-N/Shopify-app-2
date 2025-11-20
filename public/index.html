@@ -4,14 +4,48 @@
     <meta charset="UTF-8" />
     <title>Blixt Delivery Admin</title>
 
-    <!-- ✔ Shopify kräver detta exakta script -->
+    <!-- ✔ Shopify App Bridge CDN (korrekt & godkänt) -->
     <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
     <script src="https://cdn.shopify.com/shopifycloud/app-bridge-utils.js"></script>
+
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+        max-width: 600px;
+        margin: auto;
+      }
+
+      .input {
+        width: 100%;
+        padding: 10px;
+        margin: 6px 0 16px 0;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 16px;
+      }
+
+      .top-box {
+        flex: 1;
+        padding: 14px;
+        border-radius: 8px;
+        background: #f6f6f6;
+        border: 1px solid #ddd;
+        cursor: pointer;
+        font-size: 14px;
+        text-align: center;
+      }
+
+      .top-box:hover {
+        background: #ececec;
+      }
+    </style>
   </head>
 
   <body>
     <h1>Blixt Delivery Admin</h1>
 
+    <!-- ⭐ App Bridge + session token logiken -->
     <script>
       console.log("✅ JS körs!");
 
@@ -19,11 +53,6 @@
       const shop = params.get("shop");
       const host = params.get("host");
 
-      /*
-        ---------------------------------------------
-        ✔ Shopify kräver iframe-check + redirect
-        ---------------------------------------------
-      */
       if (window.top === window.self) {
         console.warn("🚫 Appen körs utanför Shopify iframe — omdirigerar...");
         if (shop) {
@@ -34,49 +63,87 @@
       } else {
         console.log("🪟 Appen körs i iframe (embedded) 100% OK");
 
-        const AppBridge = window['app-bridge'];
-        const AppBridgeUtils = window['app-bridge-utils'];
+        const AppBridge = window["app-bridge"];
+        const AppBridgeUtils = window["app-bridge-utils"];
         const { createApp } = AppBridge;
         const { getSessionToken, authenticatedFetch } = AppBridgeUtils;
 
-        /*
-          ---------------------------------------------
-          ✔ Skapa App Bridge-instans (oförändrat)
-          ---------------------------------------------
-        */
         const app = createApp({
           apiKey: "f1ad1b493f65f36ffbc728cb00e594fe",
           host,
           forceRedirect: true,
         });
 
-        /*
-          ---------------------------------------------
-          ✔ Shopify kräver session token per request
-          ---------------------------------------------
-        */
-
-        // Bygger en authenticated fetch som Shopify kräver
         const fetchWithAuth = authenticatedFetch(app);
 
         console.log("🚀 Hämtar session token...");
         getSessionToken(app)
           .then((token) => {
             console.log("🔑 Token:", token);
-
-            // 👇 Exakt samma logik som du hade – men med Shopify-godkänt sätt
-            return fetchWithAuth("/api/ping", {
-              method: "GET",
-            });
+            return fetchWithAuth("/api/ping");
           })
           .then((res) => res.json())
-          .then((data) => {
-            console.log("📬 Svar från ping:", data);
-          })
-          .catch((err) => {
-            console.error("❌ Ping-fel:", err);
-          });
+          .then((data) => console.log("📬 Ping:", data))
+          .catch((err) => console.error("❌ Ping-fel:", err));
       }
     </script>
+
+    <!-- ⭐ DITT UI börjar här -->
+    <div style="margin-top: 30px;">
+
+      <!-- Top 3 options -->
+      <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+        <button class="top-box">Ombud</button>
+        <button class="top-box">Hemleverans Express</button>
+        <button class="top-box">Hemleverans Kväll</button>
+      </div>
+
+      <hr />
+
+      <!-- Ombud Section -->
+      <h2>Ombud</h2>
+      <label>Pris (SEK)</label>
+      <input class="input" id="price_ombud" type="number" placeholder="Ex. 29" />
+
+      <label>Antal ombud som ska synas</label>
+      <input class="input" id="count_ombud" type="number" placeholder="Ex. 3" />
+
+      <label>Cutoff-tid</label>
+      <input class="input" id="cutoff_ombud" type="time" />
+
+      <p style="font-size: 12px; color: #666;">
+        Ändring av cutoff-tid kräver manuell justering – kontakta oss.
+      </p>
+
+      <hr />
+
+      <!-- Express section -->
+      <h2>Hemleverans Express</h2>
+
+      <label>Pris (SEK)</label>
+      <input class="input" id="price_express" type="number" placeholder="Ex. 49" />
+
+      <hr />
+
+      <!-- Evening -->
+      <h2>Hemleverans Kväll</h2>
+
+      <label>Pris (SEK)</label>
+      <input class="input" id="price_evening" type="number" placeholder="Ex. 59" />
+
+      <p style="font-size: 12px; color: #666;">
+        Ändring av cutoff-tid kräver manuell justering – kontakta oss.
+      </p>
+
+      <hr />
+
+      <p style="margin-top: 20px;">
+        <strong>Kontakt:</strong><br />
+        Niklas Hedemo<br />
+        <a href="mailto:Niklas.Hedemo@blixtdelivery.se">Niklas.Hedemo@blixtdelivery.se</a>
+      </p>
+    </div>
+    <!-- ⭐ DITT UI slutar här -->
+
   </body>
 </html>
