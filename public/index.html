@@ -46,47 +46,73 @@
     <h1>Blixt Delivery Admin</h1>
 
     <!-- ⭐ App Bridge + session token logiken -->
-    <script>
-      console.log("✅ JS körs!");
+   <script>
+  console.log("🚀 Blixt Admin körs!");
 
-      const params = new URLSearchParams(window.location.search);
-      const shop = params.get("shop");
-      const host = params.get("host");
+  const params = new URLSearchParams(window.location.search);
+  const shop = params.get("shop");
+  const host = params.get("host");
 
-      if (window.top === window.self) {
-        console.warn("🚫 Appen körs utanför Shopify iframe — omdirigerar...");
-        if (shop) {
-          window.location.href = `/auth?shop=${shop}&host=${host}`;
-        } else {
-          document.body.innerHTML += "<p>❌ Saknar shop-parameter.</p>";
-        }
-      } else {
-        console.log("🪟 Appen körs i iframe (embedded) 100% OK");
+  if (window.top === window.self) {
+    window.location.href = `/auth?shop=${shop}&host=${host}`;
+  } else {
+    const AppBridge = window["app-bridge"];
+    const AppBridgeUtils = window["app-bridge-utils"];
+    const { createApp } = AppBridge;
+    const { getSessionToken, authenticatedFetch } = AppBridgeUtils;
 
-        const AppBridge = window["app-bridge"];
-        const AppBridgeUtils = window["app-bridge-utils"];
-        const { createApp } = AppBridge;
-        const { getSessionToken, authenticatedFetch } = AppBridgeUtils;
+    const app = createApp({
+      apiKey: "f1ad1b493f65f36ffbc728cb00e594fe",
+      host,
+      forceRedirect: true,
+    });
 
-        const app = createApp({
-          apiKey: "f1ad1b493f65f36ffbc728cb00e594fe",
-          host,
-          forceRedirect: true,
-        });
+    const fetchWithAuth = authenticatedFetch(app);
 
-        const fetchWithAuth = authenticatedFetch(app);
+    // ====== 🟦 STEG 1: HÄMTA INSTÄLLNINGAR ======
+    async function loadSettings() {
+      const token = await getSessionToken(app);
 
-        console.log("🚀 Hämtar session token...");
-        getSessionToken(app)
-          .then((token) => {
-            console.log("🔑 Token:", token);
-            return fetchWithAuth("/api/ping");
-          })
-          .then((res) => res.json())
-          .then((data) => console.log("📬 Ping:", data))
-          .catch((err) => console.error("❌ Ping-fel:", err));
-      }
-    </script>
+      const res = await fetchWithAuth("/api/get-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shop }),
+      });
+
+      const data = await res.json();
+      console.log("📥 Hämtade inställningar:", data);
+
+      document.getElementById("enable_ombud").checked = !!data.erbjuda_ombud;
+      document.getElementById("enable_express").checked = !!data.erbjuda_hemleverans_express;
+      document.getElementById("enable_evening").checked = !!data.erbjuda_hemleverans_kvall;
+    }
+
+    loadSettings();
+
+    // ====== 🟩 STEG 2: SPARA INSTÄLLNINGAR ======
+    async function saveSettings() {
+      const body = {
+        shop,
+        erbjuda_ombud: document.getElementById("enable_ombud").checked,
+        erbjuda_hemleverans_express: document.getElementById("enable_express").checked,
+        erbjuda_hemleverans_kvall: document.getElementById("enable_evening").checked,
+      };
+
+      const res = await fetchWithAuth("/api/update-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const out = await res.json();
+      console.log("📤 Spara svar:", out);
+      alert("Inställningar sparade!");
+    }
+
+    window.saveSettings = saveSettings;
+  }
+</script>
+
 
     <!-- ⭐ DITT UI börjar här -->
     <div style="margin-top: 30px;">
@@ -148,6 +174,11 @@
       <p style="font-size: 12px; color: #666;">
         Ändring av cutoff-tid kräver manuell justering – kontakta oss.
       </p>
+<button onclick="saveSettings()" 
+  style="margin-top: 20px; padding: 10px 20px; background:black; color:white; border-radius:8px;">
+  Spara inställningar
+</button>
+<hr />
 
       <hr />
 
