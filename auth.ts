@@ -91,13 +91,14 @@ router.get("/auth/callback", async (req, res) => {
 
     // ➤ 3. Spara/uppdatera butik i Supabase
     const { error: upsertError } = await supabase
-      .from("shopify_shops")
-      .upsert({
-        shop,
-        user_id: merchantId,
-        access_token: accessToken,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "shop" });
+  .from("shopify_shops")
+  .upsert({
+    shop,
+    access_token: accessToken,
+    installed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "shop" });
+
 
     if (upsertError) {
       console.error("❌ Failed to save shop:", upsertError);
