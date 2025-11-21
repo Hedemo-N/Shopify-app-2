@@ -27,13 +27,26 @@
   </head>
 
   <body>
-    <script>
-  if (window.top === window.self) {
-    const params = new URLSearchParams(window.location.search);
-    const redirectUrl = `/auth?shop=${params.get("shop")}&host=${params.get("host")}`;
-    window.location.assign(redirectUrl);
-  }
+  <script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    if (window.top === window.self) {
+      const AppBridge = await import("https://unpkg.com/@shopify/app-bridge@3");
+      const createApp = AppBridge.default;
+      const app = createApp({
+        apiKey: document
+          .querySelector('meta[name="shopify-api-key"]')
+          .getAttribute("content"),
+        host: new URLSearchParams(window.location.search).get("host"),
+        forceRedirect: true,
+      });
+
+      const Redirect = AppBridge.actions.Redirect;
+      Redirect.create(app).dispatch(Redirect.Action.REMOTE, `/auth?shop=${new URLSearchParams(window.location.search).get("shop")}&host=${new URLSearchParams(window.location.search).get("host")}`
+);
+    }
+  });
 </script>
+
     <h1>Blixt Delivery Admin</h1>
 
     <div id="ui">
