@@ -97,6 +97,7 @@ router.get("/auth/callback", async (req, res) => {
     access_token: accessToken,
     installed_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+     user_id: merchantId, // 👈 Lägger till detta
   }, { onConflict: "shop" });
 
 

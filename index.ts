@@ -103,6 +103,8 @@ app.get("/", async (req, res) => {
       console.warn("⚠️ Ingen shop hittades i DB:", shop);
       return res.redirect(`/auth?shop=${shop}&host=${host}`);
     }
+    console.log("🪵 shopRows from DB:", shopRows);
+
 
     if (shopRows.length > 1) {
       console.error("❌ Flera rader med samma shop – ska bara vara en:", shopRows);
