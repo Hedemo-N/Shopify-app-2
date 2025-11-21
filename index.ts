@@ -103,18 +103,13 @@ if (shopRows.length > 1) {
 
 const shopRow = shopRows[0];
 
-
-  
-
-    // 2) Shop finns men saknar user_id → visa onboarding
-   if (!shopRow.user_id) {
+if (!shopRow.user_id) {
+  console.log("🟡 Shop saknar user_id – visa onboarding");
   return res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
 }
 
-
-    // 3) Shop är helt klar → visa appens dashboard
-    console.log("🟢 Shop onboarded → show admin panel");
-    return res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
+console.log("🟢 Shop onboarded → show admin panel");
+return res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
 
   } catch (err) {
     console.error("❌ Root route error:", err);
