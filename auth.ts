@@ -26,9 +26,14 @@ router.get("/auth", async (req, res) => {
     const shop = req.query.shop as string;
     const host = req.query.host as string;
 
-    if (!shop || !host) {
-      return res.status(400).send("Missing shop or host");
-    }
+   console.log("➡️ /auth HIT");
+  console.log("🛍️ shop:", shop);
+  console.log("🏠 host:", host);
+
+  if (!shop || !host) {
+    console.log("❌ Saknar shop eller host");
+    return res.status(400).send("Missing shop or host");
+  }
 
     if (!req.cookies["shopifyTopLevelOAuth"]) {
       console.log("🔁 Redirecting to top-level auth...");
@@ -51,6 +56,8 @@ router.get("/auth", async (req, res) => {
 
 // --- 2️⃣ OAuth callback ---
 router.get("/auth/callback", async (req, res) => {
+  console.log("✅ /auth/callback HIT");
+  console.log("🧾 query params:", req.query);
   try {
     const { shop, code, host } = req.query;
 
