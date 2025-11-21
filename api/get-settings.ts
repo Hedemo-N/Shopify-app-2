@@ -1,9 +1,11 @@
 import express from "express";
 import { supabase } from "../supabaseClient.ts";
+import { verifySessionToken } from "../middleware/verifySessionToken.ts";
 
 const router = express.Router();
 
-router.post("/api/get-settings", async (req, res) => {
+// ⬇️ Lägg till middleware här
+router.post("/api/get-settings", verifySessionToken, async (req, res) => {
   const { shop } = req.body;
 
   const { data: shopRow, error: shopErr } = await supabase
@@ -24,5 +26,3 @@ router.post("/api/get-settings", async (req, res) => {
 
   res.json(profile);
 });
-
-export default router;
