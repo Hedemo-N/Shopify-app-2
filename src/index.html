@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="shopify-api-key" content="f1ad1b493f65f36ffbc728cb00e594fe" />
-
     <title>Blixt Delivery Admin</title>
     <script type="module" src="/src/frontend.js"></script>
 
@@ -28,6 +27,13 @@
   </head>
 
   <body>
+    <script>
+  if (window.top === window.self) {
+    const params = new URLSearchParams(window.location.search);
+    const redirectUrl = `/auth?shop=${params.get("shop")}&host=${params.get("host")}`;
+    window.location.assign(redirectUrl);
+  }
+</script>
     <h1>Blixt Delivery Admin</h1>
 
     <div id="ui">
@@ -96,4 +102,6 @@
     </div>
 
   </body>
+  
+
 </html>
