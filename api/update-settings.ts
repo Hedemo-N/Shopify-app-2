@@ -4,26 +4,36 @@ import { supabase } from "../supabaseClient.js";
 const router = express.Router();
 
 router.post("/api/update-settings", async (req, res) => {
-  const { shop, erbjuda_ombud, erbjuda_hemleverans_express, erbjuda_hemleverans_kvall } = req.body;
+  const {
+    shop,
+    erbjuda_ombud,
+    erbjuda_hemleverans_express,
+    erbjuda_hemleverans_kvall,
+  } = req.body;
 
-  const { data: shopRow } = await supabase
+  const { data, error } = await supabase
     .from("shopify_shops")
     .select("user_id")
-    .eq("shop", shop)
-    .single();
+    .eq("shop", shop);
 
-  if (!shopRow) return res.status(400).json({ error: "Shop not found" });
+  if (error || !data || data.length !== 1) {
+    return res.status(400).json({ error: "Shop not found or not unique" });
+  }
 
-  const { error } = await supabase
+  const userId = data[0].user_id;
+
+  const { error: updateError } = await supabase
     .from("profiles")
     .update({
       erbjuda_ombud,
       erbjuda_hemleverans_express,
       erbjuda_hemleverans_kvall,
     })
-    .eq("id", shopRow.user_id);
+    .eq("id", userId);
 
-  if (error) return res.status(400).json({ error });
+  if (updateError) {
+    return res.status(400).json({ error: updateError.message });
+  }
 
   res.json({ success: true });
 });
