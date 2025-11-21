@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Blixt Admin Login</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 40px;
+        max-width: 400px;
+        margin: auto;
+      }
+
+      h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+
+      input {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 16px;
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        background-color: black;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 12px;
+      }
+
+      button:hover {
+        opacity: 0.9;
+      }
+
+      .error {
+        color: red;
+        font-size: 14px;
+        margin-top: 8px;
+      }
+
+      .contact-section {
+        margin-top: 60px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Logga in</h1>
+
+    <input id="email" placeholder="E-post" />
+    <input id="password" placeholder="Lösenord" type="password" />
+    <button onclick="login()">Logga in</button>
+    <p id="error" class="error"></p>
+
+    <div class="contact-section">
+      <h2>Vill du leverera med oss?</h2>
+      <p>Fyll i din mailadress så hör vi av oss!</p>
+      <input id="contactEmail" placeholder="Din e-postadress" />
+      <button onclick="sendContact()">Skicka</button>
+      <p id="contactMessage"></p>
+    </div>
+
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+      const supabase = createClient("https://...supabase-url...", "your-anon-key");
+
+      async function login() {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+          document.getElementById("error").textContent = error.message;
+        } else {
+          localStorage.setItem("sb_token", data.session.access_token);
+          window.location.href = "/";
+        }
+      }
+
+      async function sendContact() {
+        const email = document.getElementById("contactEmail").value;
+        document.getElementById("contactMessage").textContent = "Tack! Vi hör av oss snart 🙌";
+        // Här kan du lägga till ett POST-anrop till din backend/Supabase Function om du vill spara/skicka detta
+      }
+    </script>
+  </body>
+</html>
