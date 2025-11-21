@@ -18,7 +18,7 @@ if (window.top === window.self) {
     apiKey: "f1ad1b493f65f36ffbc728cb00e594fe",
     host,
     forceRedirect: true,
-  });
+  }); 
 
 
   const fetchWithAuth = authenticatedFetch(app);
