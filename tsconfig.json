@@ -19,6 +19,6 @@
   },
 
   /* ======= Vilka mappar TS ska läsa ======= */
-  "include": ["api", "routes", "utils", "src"],
+  "include": ["api", "routes", "utils", "src", "types"],
   "exclude": ["node_modules"]
 }
