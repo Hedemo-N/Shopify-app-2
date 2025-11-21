@@ -28,7 +28,8 @@
     "resend": "^6.4.1",
     "supabase": "^2.54.11",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^7.2.4"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

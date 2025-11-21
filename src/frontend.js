@@ -1,8 +1,11 @@
-import { createApp } from "https://cdn.shopify.com/shopifycloud/app-bridge/v3/app-bridge.esm.js";
+import createApp from "@shopify/app-bridge";
 import {
   getSessionToken,
-  authenticatedFetch
-} from "https://cdn.shopify.com/shopifycloud/app-bridge/v3/app-bridge-utils.esm.js";
+  authenticatedFetch,
+} from "@shopify/app-bridge-utils";
+
+// samma kod som du redan har, du behöver inte ändra nåt annat
+
 
 const params = new URLSearchParams(window.location.search);
 const shop = params.get("shop");
