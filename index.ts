@@ -91,9 +91,11 @@ app.get("/login", (req, res) => {
 app.get("/", async (req, res) => {
   try {
     const { shop, host } = req.query;
+
+    // 👉 Om ingen shop → visa login-sidan (för externa användare)
     if (!shop || !host) {
-      console.warn("❌ Missing shop or host in /");
-      return res.status(400).send("Missing shop or host");
+      console.log("🌐 Ingen shop/host → visa login.html");
+      return res.sendFile("login.html", { root: path.join(process.cwd(), "public") });
     }
 
     const { data: shopRows, error } = await supabase
@@ -110,13 +112,6 @@ app.get("/", async (req, res) => {
       console.warn("⚠️ Ingen shop hittades i DB:", shop);
       return res.redirect(`/auth?shop=${shop}&host=${host}`);
     }
-    console.log("🪵 shopRows from DB:", shopRows);
-
-
-    if (shopRows.length > 1) {
-      console.error("❌ Flera rader med samma shop – ska bara vara en:", shopRows);
-      return res.status(500).send("Database error: multiple shops found");
-    }
 
     const shopRow = shopRows[0];
     if (!shopRow.user_id) {
@@ -124,7 +119,7 @@ app.get("/", async (req, res) => {
       return res.sendFile("onboarding.html", { root: path.join(process.cwd(), "public") });
     }
 
-    console.log("🟢 Shop onboarded → visa admin-panel");
+    console.log("🟢 Shop onboardad → visa admin-panel");
     return res.sendFile("index.html", { root: path.join(process.cwd(), "public") });
 
   } catch (err) {
@@ -132,6 +127,7 @@ app.get("/", async (req, res) => {
     return res.status(500).send("Unexpected error");
   }
 });
+
 
 // --- Start ---
 app.listen(PORT, () => {

@@ -73,25 +73,42 @@
     <script type="module">
       import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
-      const supabase = createClient("https://...supabase-url...", "your-anon-key");
+      const supabase = createClient("https://your-project-id.supabase.co", "your-anon-key");
 
       async function login() {
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
+        const errorBox = document.getElementById("error");
+
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
-          document.getElementById("error").textContent = error.message;
-        } else {
-          localStorage.setItem("sb_token", data.session.access_token);
-          window.location.href = "/";
+          errorBox.textContent = error.message;
+          return;
         }
+
+        // Spara access-token för API-anrop
+        localStorage.setItem("sb_token", data.session.access_token);
+
+        // Hämta ev. shop och host från URL om appen körs embedded
+        const urlParams = new URLSearchParams(window.location.search);
+        const shop = urlParams.get("shop");
+        const host = urlParams.get("host");
+
+        // Bygg redirect till / med ev. query-parametrar
+        let redirectUrl = "/";
+        if (shop && host) {
+          redirectUrl += `?shop=${shop}&host=${host}`;
+        }
+
+        window.location.href = redirectUrl;
       }
 
       async function sendContact() {
         const email = document.getElementById("contactEmail").value;
         document.getElementById("contactMessage").textContent = "Tack! Vi hör av oss snart 🙌";
-        // Här kan du lägga till ett POST-anrop till din backend/Supabase Function om du vill spara/skicka detta
+
+        // Eventuellt: skicka till Supabase function eller backend
       }
     </script>
   </body>
