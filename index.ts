@@ -80,22 +80,31 @@ app.get("/", async (req, res) => {
 
     console.log("🔍 Checking shop in DB:", shop);
 
-    const { data: shopRow, error } = await supabase
-      .from("shopify_shops")
-      .select("user_id")
-      .eq("shop", shop)
-      .single();
+ const { data: shopRows, error } = await supabase
+  .from("shopify_shops")
+  .select("user_id")
+  .eq("shop", shop);
 
-    if (error) {
-      console.error("❌ Supabase error in root:", error);
-      return res.status(500).send("Database error");
-    }
+if (error) {
+  console.error("❌ Supabase query error:", error);
+  return res.status(500).send("Database error");
+}
 
-    // 1) Shop finns INTE → börja OAuth
-    if (!shopRow) {
-      console.log("⚠️ Shop missing → start OAuth");
-      return res.redirect(`/auth?shop=${shop}&host=${host}`);
-    }
+if (!shopRows || shopRows.length === 0) {
+  console.warn("⚠️ Ingen shop hittades i DB:", shop);
+  return res.redirect(`/auth?shop=${shop}&host=${host}`);
+}
+
+if (shopRows.length > 1) {
+  console.error("❌ Flera rader med samma shop – ska bara vara en:", shopRows);
+  return res.status(500).send("Database error: multiple shops found");
+}
+
+
+const shopRow = shopRows[0];
+
+
+  
 
     // 2) Shop finns men saknar user_id → visa onboarding
    if (!shopRow.user_id) {
