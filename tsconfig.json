@@ -12,6 +12,7 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
+    "typeRoots": ["./node_modules/@types", "./types"],
 
     /* ======= För React/JSX (valfritt) ======= */
     "jsx": "react-jsx"
