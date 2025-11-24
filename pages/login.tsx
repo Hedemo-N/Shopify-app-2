@@ -25,7 +25,7 @@ export default function LoginPage() {
 
   return (
     <div style={{ padding: 40, maxWidth: 400, margin: "auto" }}>
-      <h1>Logga in</h1>
+      <h1>Logga in på blixten test</h1>
       <form onSubmit={handleSubmit}>
         <input
           id="email"

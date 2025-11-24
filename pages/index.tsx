@@ -1,13 +1,16 @@
 // pages/index.tsx
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import { getSessionToken } from "@shopify/app-bridge-utils";
+import { useAppBridge } from "@shopify/app-bridge-react";
 
 export default function IndexPage() {
   const router = useRouter();
+  const app = useAppBridge();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!router.isReady) return; // Vänta tills router.query är redo
+    if (!router.isReady || !app) return;
 
     const { shop, host } = router.query;
 
@@ -18,39 +21,45 @@ export default function IndexPage() {
 
     const checkShopStatus = async () => {
       try {
-        const res = await fetch("/api/check-shop", {
+        const token = await getSessionToken(app);
+
+        const response = await fetch("/api/check-shop", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({ shop }),
         });
 
-        const data = await res.json();
+        const data = await response.json();
 
-        if (res.ok) {
+        if (response.ok) {
           if (!data.user_id) {
             router.push(`/onboarding?shop=${shop}&host=${host}`);
           } else {
             setLoading(false);
           }
         } else {
-          console.error("Database error", data);
+          console.warn("Fel från /api/check-shop", data);
           router.push("/login");
         }
-      } catch (error) {
-        console.error("API error:", error);
+      } catch (err) {
+        console.error("Fel vid hämtning av session token:", err);
         router.push("/login");
       }
     };
 
     checkShopStatus();
-  }, [router.isReady, router]);
+  }, [router.isReady, router, app]);
 
-  if (loading) return <p>Laddar...</p>;
+  if (loading) return <p>Laddar adminpanelen...</p>;
 
   return (
-    <div>
+    <div style={{ padding: "2rem" }}>
       <h1>Blixt Delivery Admin</h1>
-      {/* Adminpanelen UI här, som tidigare */}
+      <p>Välkommen till din adminpanel! ✨</p>
+      {/* Lägg till funktionalitet här */}
     </div>
   );
 }
