@@ -1,24 +1,23 @@
 {
   "compilerOptions": {
-    /* ======= Basinställningar ======= */
-    "target": "ES2022",
-    "module": "NodeNext",                 // ✅ måste matcha moduleResolution
-    "moduleResolution": "NodeNext",       // för ESM
-    "noEmit": true,                       // vi låter Vercel kompilera, krävs för allowImportingTsExtensions
-    "allowImportingTsExtensions": true,   // tillåt .js-importer
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "strict": true,
+    "target": "ES2020",
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+    "allowJs": true,
     "skipLibCheck": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
     "isolatedModules": true,
+    "jsx": "preserve",
+    "noEmit": true,
+    "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "typeRoots": ["./node_modules/@types", "./types"],
-
-    /* ======= För React/JSX (valfritt) ======= */
-    "jsx": "react-jsx"
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-
-  /* ======= Vilka mappar TS ska läsa ======= */
-  "include": ["api", "routes", "utils", "src", "types"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.js"],
   "exclude": ["node_modules"]
 }

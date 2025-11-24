@@ -1,6 +1,6 @@
 import express from "express";
-import { supabase } from "../supabaseClient.ts";
-import { verifySessionToken } from "../middleware/verifySessionToken.ts";
+import { supabase } from "../frontend/lib/supabaseClient.js";
+import { verifySessionToken } from "./verifySessionToken.js";
 
 const router = express.Router();
 

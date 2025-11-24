@@ -1,6 +1,6 @@
 import express, { type Request, type Response } from "express";
 import crypto from "crypto";
-import { supabase } from "../../supabaseClient.js";
+import { supabase } from "../../frontend/lib/supabaseClient.js";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
 import { readFile } from "fs/promises";

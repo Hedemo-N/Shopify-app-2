@@ -1,7 +1,7 @@
 // /api/onboarding-complete.ts
 import express from "express";
-import { supabase } from "../supabaseClient.js";
-import { verifySessionToken } from "../middleware/verifySessionToken.js";
+import { supabase } from "../frontend/lib/supabaseClient.js";
+import { verifySessionToken } from "./verifySessionToken.js";
 
 const router = express.Router();
 

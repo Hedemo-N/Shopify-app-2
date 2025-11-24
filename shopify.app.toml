@@ -1,4 +1,5 @@
-# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+# Shopify App Configuration
+# https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "f1ad1b493f65f36ffbc728cb00e594fe"
 name = "Blixt Delivery"
@@ -6,13 +7,12 @@ application_url = "https://blixt-app.vercel.app/"
 embedded = true
 
 [access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "read_fulfillments,write_fulfillments,read_locations,read_orders,write_shipping"
-optional_scopes = [ ]
+optional_scopes = []
 use_legacy_install_flow = false
 
 [auth]
-redirect_urls = [ "https://blixt-app.vercel.app/auth/callback" ]
+redirect_urls = ["https://blixt-app.vercel.app/api/auth/callback"]
 
 [webhooks]
 api_version = "2025-10"

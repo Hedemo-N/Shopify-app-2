@@ -1,6 +1,6 @@
 import express from "express";
 import fetch from "node-fetch";
-import { supabase } from "../supabaseClient.js";
+import { supabase } from "../frontend/lib/supabaseClient.js";
 
 const router = express.Router();
 

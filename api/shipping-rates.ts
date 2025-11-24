@@ -1,6 +1,6 @@
 import express from "express";
 import type { Request, Response } from "express";
-import { supabase } from "../supabaseClient.js";
+import { supabase } from "../frontend/lib/supabaseClient.js";
 import { getCoordinatesFromMapbox } from "../utils/MapboxGeocoding.js";
 
 const router = express.Router();
