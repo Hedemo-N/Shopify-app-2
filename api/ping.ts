@@ -1,6 +1,7 @@
-import { VercelRequest, VercelResponse } from "@vercel/node";
+import type { NextApiRequest, NextApiResponse } from "next";
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
+
   console.log("📡 /api/ping anropad!");
   res.status(200).json({ message: "Pong från /api/ping!" });
 }

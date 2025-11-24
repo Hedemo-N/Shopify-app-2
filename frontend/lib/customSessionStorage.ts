@@ -1,6 +1,6 @@
 // customSessionStorage.ts
 import type { Session } from "@shopify/shopify-api";
-import { supabase } from "./frontend/lib/supabaseClient.js";
+import { supabase } from "./supabaseClient";
 
 export const customSessionStorage = {
   async storeSession(session: Session): Promise<boolean> {

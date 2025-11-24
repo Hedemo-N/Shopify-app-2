@@ -1,5 +1,3 @@
-
-
 // pages/index.tsx
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
@@ -9,37 +7,43 @@ export default function IndexPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!router.isReady) return; // Vänta tills router.query är redo
+
+    const { shop, host } = router.query;
+
+    if (typeof shop !== "string" || typeof host !== "string") {
+      router.push("/login");
+      return;
+    }
+
     const checkShopStatus = async () => {
-      const shop = router.query.shop;
-      const host = router.query.host;
+      try {
+        const res = await fetch("/api/check-shop", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ shop }),
+        });
 
-      if (!shop || !host) {
-        router.push("/login");
-        return;
-      }
+        const data = await res.json();
 
-      const res = await fetch("/api/check-shop", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shop }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        if (!data.user_id) {
-          router.push(`/onboarding?shop=${shop}&host=${host}`);
+        if (res.ok) {
+          if (!data.user_id) {
+            router.push(`/onboarding?shop=${shop}&host=${host}`);
+          } else {
+            setLoading(false);
+          }
         } else {
-          setLoading(false); // show admin UI below
+          console.error("Database error", data);
+          router.push("/login");
         }
-      } else {
-        console.error("Database error", data);
+      } catch (error) {
+        console.error("API error:", error);
         router.push("/login");
       }
     };
 
     checkShopStatus();
-  }, [router]);
+  }, [router.isReady, router]);
 
   if (loading) return <p>Laddar...</p>;
 
@@ -50,4 +54,3 @@ export default function IndexPage() {
     </div>
   );
 }
-
