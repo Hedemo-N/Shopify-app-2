@@ -35,7 +35,7 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
           required
           style={{ width: "100%", padding: 10, marginBottom: 12 }}
-        />
+        /> 
         <input
           id="password"
           type="password"
