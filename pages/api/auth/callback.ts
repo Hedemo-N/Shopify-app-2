@@ -1,47 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { supabase } from "../../../frontend/lib/supabaseClient";
 import crypto from "crypto";
-import fetch from "node-fetch";
-import { memorySessionStorage } from "../../../frontend/lib/memorySessionStorage";
-
-type ShopifyAccessTokenResponse = {
-  access_token: string;
-  scope: string;
-};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { shop, hmac, code, state } = req.query;
+  console.log("✅ /api/auth/callback HIT");
 
-  if (!shop || !hmac || !code || !state) {
-    return res.status(400).send("Missing required parameters");
+  const { shop, code, host } = req.query;
+
+  if (!shop || !code || !host) {
+    return res.status(400).send("Missing params");
   }
 
-  // Verify state (CSRF)
-  const stateCookie = req.cookies["shopify_state"];
-  if (state !== stateCookie) {
-    return res.status(400).send("Invalid state");
-  }
-
-  // Verify HMAC
-  const params = { ...req.query };
-  delete params.hmac;
-  const message = Object.keys(params)
-    .sort()
-    .map((key) => `${key}=${params[key]}`)
-    .join("&");
-
-  const generatedHmac = crypto
-    .createHmac("sha256", process.env.SHOPIFY_API_SECRET!)
-    .update(message)
-    .digest("hex");
-
-  if (generatedHmac !== hmac) {
-    return res.status(401).send("HMAC validation failed");
-  }
-
-  // Exchange code for access token
-  const tokenUrl = `https://${shop}/admin/oauth/access_token`;
-
-  const tokenResponse = await fetch(tokenUrl, {
+  const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -51,22 +21,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }),
   });
 
-  const tokenJson = (await tokenResponse.json()) as ShopifyAccessTokenResponse;
+  const tokenData = await tokenResponse.json();
 
-
-  if (!tokenJson.access_token) {
-    return res.status(400).send("Failed to retrieve access token");
+  if (!tokenData.access_token) {
+    return res.status(500).send("Token error");
   }
 
-  // Save session in your in-memory store
-  await memorySessionStorage.storeSession({
-    id: shop.toString(),
-    shop: shop.toString(),
-    accessToken: tokenJson.access_token,
-    scope: tokenJson.scope,
+  const accessToken = tokenData.access_token;
+  const merchantId = tokenData.associated_user?.id ?? null;
+
+  await supabase
+    .from("shopify_shops")
+    .upsert(
+      {
+        shop,
+        access_token: accessToken,
+        installed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        user_id: merchantId,
+      },
+      { onConflict: "shop" }
+    );
+
+  await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
+    method: "POST",
+    headers: {
+      "X-Shopify-Access-Token": accessToken,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      carrier_service: {
+        name: "Blixt Delivery",
+        callback_url: `${process.env.SHOPIFY_APP_URL}/api/shipping-rates`,
+        service_discovery: true,
+      },
+    }),
   });
 
-  // Redirect back into embedded app
-  const host = req.query.host as string;
-  res.redirect(`/?shop=${shop}&host=${host}`);
+  // Redirect to embedded Shopify app
+  res.send(`
+    <html>
+      <head>
+        <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+      </head>
+      <body>
+        <script>
+          const AppBridge = window['app-bridge'];
+          const Redirect = AppBridge.actions.Redirect;
+
+          const app = AppBridge.createApp({
+            apiKey: "${process.env.SHOPIFY_API_KEY}",
+            host: "${host}"
+          });
+
+          Redirect.create(app).dispatch(
+            Redirect.Action.APP,
+            "/?shop=${shop}&host=${host}"
+          );
+        </script>
+      </body>
+    </html>
+  `);
 }
