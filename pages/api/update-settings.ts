@@ -1,9 +1,11 @@
-import express from "express";
-import { supabase } from "../frontend/lib/supabaseClient.js";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { supabase } from "../../frontend/lib/supabaseClient";
 
-const router = express.Router();
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
-router.post("/api/update-settings", async (req, res) => {
   const {
     shop,
     erbjuda_ombud,
@@ -11,6 +13,7 @@ router.post("/api/update-settings", async (req, res) => {
     erbjuda_hemleverans_kvall,
   } = req.body;
 
+  // 🔍 Hämta user_id kopplat till shop
   const { data, error } = await supabase
     .from("shopify_shops")
     .select("user_id")
@@ -22,6 +25,7 @@ router.post("/api/update-settings", async (req, res) => {
 
   const userId = data[0].user_id;
 
+  // 🔧 Uppdatera profilen
   const { error: updateError } = await supabase
     .from("profiles")
     .update({
@@ -35,7 +39,5 @@ router.post("/api/update-settings", async (req, res) => {
     return res.status(400).json({ error: updateError.message });
   }
 
-  res.json({ success: true });
-});
-
-export default router;
+  return res.status(200).json({ success: true });
+}

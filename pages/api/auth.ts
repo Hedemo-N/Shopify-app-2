@@ -1,10 +1,8 @@
-// app/auth.ts
+import type { NextApiRequest, NextApiResponse } from "next";
 import "@shopify/shopify-api/adapters/node";
-import express from "express";
-import dotenv from "dotenv";
 import crypto from "crypto";
-import fetch from "node-fetch";
-import { supabase } from "../frontend/lib/supabaseClient.js";
+import { supabase } from "../../frontend/lib/supabaseClient";
+
 
 interface ShopifyAccessTokenResponse {
   access_token?: string;
@@ -17,55 +15,75 @@ interface ShopifyAccessTokenResponse {
   };
 }
 
-dotenv.config();
-const router = express.Router();
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
 
-// --- 1️⃣ Start OAuth flow ---
-router.get("/auth", async (req, res) => {
+// -----------------------------
+// 1️⃣ /api/auth  — Start OAuth
+// -----------------------------
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === "GET" && req.url?.startsWith("/api/auth/callback")) {
+    return authCallback(req, res);
+  }
+  if (req.method === "GET") {
+    return startAuth(req, res);
+  }
+
+  return res.status(405).send("Method not allowed");
+}
+
+// ---- Starta OAuth ----
+async function startAuth(req: NextApiRequest, res: NextApiResponse) {
   try {
     const shop = req.query.shop as string;
     const host = req.query.host as string;
 
-   console.log("➡️ /auth HIT");
-  console.log("🛍️ shop:", shop);
-  console.log("🏠 host:", host);
+    console.log("➡️ /api/auth HIT");
+    console.log("🛍️ shop:", shop);
+    console.log("🏠 host:", host);
 
-  if (!shop || !host) {
-    console.log("❌ Saknar shop eller host");
-    return res.status(400).send("Missing shop or host");
-  }
-
-    if (!req.cookies["shopifyTopLevelOAuth"]) {
-      console.log("🔁 Redirecting to top-level auth...");
-      return res.redirect(`/auth/toplevel?shop=${shop}&host=${host}`);
+    if (!shop || !host) {
+      return res.status(400).send("Missing shop or host");
     }
 
-    console.log("✅ Cookie detected, proceeding with OAuth for", shop);
+    // 🍪 Kolla top-level cookie
+    if (!req.cookies["shopifyTopLevelOAuth"]) {
+      console.log("🔁 Redirecting to top-level auth...");
+      return res.redirect(`/api/auth/toplevel?shop=${shop}&host=${host}`);
+    }
 
     const state = crypto.randomBytes(16).toString("hex");
 
-    const redirectUri = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_API_KEY}&scope=${process.env.SHOPIFY_SCOPES}&redirect_uri=${process.env.SHOPIFY_APP_URL}/auth/callback&state=${state}`;
+    const redirectUri = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_API_KEY}&scope=${process.env.SHOPIFY_SCOPES}&redirect_uri=${process.env.SHOPIFY_APP_URL}/api/auth/callback&state=${state}`;
+
     console.log("🔗 Redirecting to Shopify OAuth:", redirectUri);
 
     return res.redirect(redirectUri);
   } catch (err) {
     console.error("❌ Auth start error:", err);
     return res.status(500).send("Auth start failed");
-  } 
-});
+  }
+}
 
-// --- 2️⃣ OAuth callback ---
-router.get("/auth/callback", async (req, res) => {
-  console.log("✅ /auth/callback HIT");
+// -----------------------------
+// 2️⃣ OAuth Callback
+// -----------------------------
+async function authCallback(req: NextApiRequest, res: NextApiResponse) {
+  console.log("✅ /api/auth/callback HIT");
   console.log("🧾 query params:", req.query);
+
   try {
     const { shop, code, host } = req.query;
 
     if (!shop || !code || !host) {
-      console.error("❌ Missing shop, code eller host");
+      console.error("❌ Missing required params");
       return res.status(400).send("Missing params");
     }
 
+    // ---- Hämta access_token ----
     const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -76,38 +94,38 @@ router.get("/auth/callback", async (req, res) => {
       }),
     });
 
-    const tokenData = await tokenResponse.json() as ShopifyAccessTokenResponse;
+    const tokenData = (await tokenResponse.json()) as ShopifyAccessTokenResponse;
+
     const accessToken = tokenData.access_token;
 
     if (!accessToken) {
-      console.error("❌ No access token in Shopify response", tokenData);
+      console.error("❌ No access token in response", tokenData);
       return res.status(500).send("Token error");
     }
 
-    console.log("🔑 Access token received:", accessToken);
+    console.log("🔑 Access token:", accessToken);
 
-    const userData = tokenData.associated_user;
-    const merchantId = userData?.id ?? null;
-
-    console.log("👤 Shopify associated_user id:", merchantId);
+    // ---- Sparar shop i DB ----
+    const merchantId = tokenData.associated_user?.id ?? null;
 
     const { error: upsertError } = await supabase
       .from("shopify_shops")
-      .upsert({
-        shop,
-        access_token: accessToken,
-        installed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        user_id: merchantId,
-      }, { onConflict: "shop" });
+      .upsert(
+        {
+          shop,
+          access_token: accessToken,
+          installed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          user_id: merchantId,
+        },
+        { onConflict: "shop" }
+      );
 
     if (upsertError) {
       console.error("❌ Failed to save shop:", upsertError);
-    } else {
-      console.log("💾 shopify_shops updated");
     }
 
-    console.log("📦 Registering carrier service...");
+    // ---- Registrera Carrier Service ----
     await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
       method: "POST",
       headers: {
@@ -123,9 +141,9 @@ router.get("/auth/callback", async (req, res) => {
       }),
     });
 
-    console.log("✅ Carrier registered");
+    console.log("🚚 Carrier Service registered");
 
-    // ✅ Fixad redirect
+    // ---- Redirect tillbaka till appen ----
     res.send(`
       <html>
         <head>
@@ -149,11 +167,8 @@ router.get("/auth/callback", async (req, res) => {
         </body>
       </html>
     `);
-
   } catch (err) {
-    console.error("❌ OAuth callback error:", err);
-    res.status(500).send("OAuth failed");
+    console.error("❌ authCallback error:", err);
+    return res.status(500).send("OAuth failed");
   }
-});
-
-export default router;
+}

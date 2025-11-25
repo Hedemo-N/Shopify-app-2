@@ -1,9 +1,10 @@
-import dotenv from "dotenv";
-dotenv.config();
+// utils/getCoordinatesFromMapbox.ts
 
-const MAPBOX_ACCESS_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
-if (!MAPBOX_ACCESS_TOKEN) {
-  throw new Error("❌ Mapbox Access Token saknas. Lägg till i .env-filen!");
+// Next.js laddar automatiskt miljövariabler via process.env
+const MAPBOX_ACCESS_TOKEN = process.env.MAPBOX_ACCESS_TOKEN ?? "";
+
+if (typeof window === "undefined" && !MAPBOX_ACCESS_TOKEN) {
+  console.error("❌ MAPBOX_ACCESS_TOKEN saknas i miljövariablerna!");
 }
 
 type Coordinates = { latitude: number; longitude: number };
@@ -11,6 +12,11 @@ type Coordinates = { latitude: number; longitude: number };
 export async function getCoordinatesFromMapbox(
   address: string
 ): Promise<Coordinates | null> {
+  if (!MAPBOX_ACCESS_TOKEN) {
+    console.error("❌ MAPBOX_ACCESS_TOKEN saknas — avbryter geocoding.");
+    return null;
+  }
+
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
     address
   )}.json?access_token=${MAPBOX_ACCESS_TOKEN}`;

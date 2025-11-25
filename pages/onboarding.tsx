@@ -1,12 +1,15 @@
 // pages/onboarding.tsx
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
+import { getSessionToken } from "@shopify/app-bridge-utils";
+import { useAppBridge } from "@shopify/app-bridge-react";
 
-// Wrappa för att bara köra på klienten (hindrar SSR-krasch)
 function OnboardingPage() {
   const router = useRouter();
   const { shop, host } = router.query;
+
+  const app = useAppBridge();
 
   const [form, setForm] = useState({
     company: "",
@@ -23,6 +26,8 @@ function OnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const token = await getSessionToken(app); // 🔥 viktigt
+
     const payload = {
       shop,
       host,
@@ -31,7 +36,10 @@ function OnboardingPage() {
 
     const res = await fetch("/api/onboarding-complete", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // 🔥 NYTT!
+      },
       body: JSON.stringify(payload),
     });
 
@@ -82,5 +90,4 @@ function OnboardingPage() {
   );
 }
 
-// Detta ser till att sidan bara renderas på klienten
 export default dynamic(() => Promise.resolve(OnboardingPage), { ssr: false });

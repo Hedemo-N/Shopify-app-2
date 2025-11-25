@@ -1,16 +1,23 @@
-import express from "express";
-import fetch from "node-fetch";
-import { supabase } from "../frontend/lib/supabaseClient.js";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { supabase } from "../../frontend/lib/supabaseClient";
 
-const router = express.Router();
+export const config = {
+  api: {
+    bodyParser: true, // vanlig JSON
+  },
+};
 
-// 🧩 Hämta ordrar för butik
-router.get("/orders", async (req, res) => {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   try {
+    // 🏪 Hämta butik från query eller header
     const shop =
-      req.query.shop ||
-      req.headers["x-shopify-shop-domain"] ||
-      req.headers["X-Shopify-Shop-Domain"];
+      (req.query.shop as string) ||
+      (req.headers["x-shopify-shop-domain"] as string) ||
+      (req.headers["X-Shopify-Shop-Domain"] as string);
 
     if (!shop) {
       return res.status(400).json({ error: "Missing shop parameter" });
@@ -24,7 +31,7 @@ router.get("/orders", async (req, res) => {
       .single();
 
     if (shopError || !shopData) {
-      console.error("❌ Hittade inte token:", shopError);
+      console.error("❌ Kunde inte hitta access_token:", shopError);
       return res.status(404).json({ error: "No token found for shop" });
     }
 
@@ -43,14 +50,13 @@ router.get("/orders", async (req, res) => {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("❌ Shopify API-fel:", text);
+      console.error("❌ Shopify API response fel:", text);
       return res.status(response.status).send(text);
     }
 
     const data = (await response.json()) as { orders: any[] };
 
-
-    // 📦 Anpassa formatet till din struktur
+    // 📦 Anpassa formatet till ditt system
     const formattedOrders = data.orders.map((o: any) => ({
       order_id: o.id,
       name: o.name,
@@ -66,11 +72,9 @@ router.get("/orders", async (req, res) => {
       created_at: o.created_at,
     }));
 
-    return res.json({ orders: formattedOrders });
+    return res.status(200).json({ orders: formattedOrders });
   } catch (err) {
-    console.error("❌ API error:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("❌ /api/orders error:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
-});
-
-export default router;
+}

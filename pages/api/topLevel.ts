@@ -1,20 +1,21 @@
-import express from "express";
-const router = express.Router();
+import type { NextApiRequest, NextApiResponse } from "next";
 
-router.get("/auth/toplevel", (req, res) => {
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const { shop, host } = req.query;
 
   if (!shop || !host) {
     return res.status(400).send("Missing shop or host");
   }
 
-  res.cookie("shopifyTopLevelOAuth", "1", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-  });
-console.log("🍪 Setting shopifyTopLevelOAuth cookie for", shop);
+  // 🍪 Sätt cookie (samma värden som Express)
+  res.setHeader(
+    "Set-Cookie",
+    `shopifyTopLevelOAuth=1; Path=/; HttpOnly; Secure; SameSite=None`
+  );
 
+  console.log("🍪 Setting shopifyTopLevelOAuth cookie for", shop);
+
+  // HTML-svar
   res.setHeader("Content-Type", "text/html");
   res.send(`
     <!DOCTYPE html>
@@ -32,15 +33,12 @@ console.log("🍪 Setting shopifyTopLevelOAuth cookie for", shop);
             host: new URLSearchParams(window.location.search).get("host"),
           });
 
-          // 🚀 Skicka tillbaka in till inbäddad app
           Redirect.create(app).dispatch(
             Redirect.Action.REMOTE,
-            "${process.env.SHOPIFY_APP_URL}/auth?shop=${shop}&host=${host}"
+            "${process.env.SHOPIFY_APP_URL}/api/auth?shop=${shop}&host=${host}"
           );
         </script>
       </body>
     </html>
   `);
-});
-
-export default router;
+}
