@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import "@shopify/shopify-api/adapters/node"; // 👈 ADD THIS LINE
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
+
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,

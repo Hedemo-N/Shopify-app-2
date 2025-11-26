@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import "@shopify/shopify-api/adapters/node"; // 👈 ADD THIS LINE
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { supabase } from "../../frontend/lib/supabaseClient";
+
 
 // Shopify client
 const shopify = shopifyApi({

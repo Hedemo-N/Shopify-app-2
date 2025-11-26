@@ -12,10 +12,15 @@ export default function App({ Component, pageProps }: AppProps) {
   const appBridgeConfig = useMemo(() => {
     return {
       apiKey: process.env.NEXT_PUBLIC_SHOPIFY_API_KEY || "",
-      host: typeof host === "string" ? host : "",
+      host: (typeof host === "string" ? host : "") || new URLSearchParams(window.location.search).get("host") || "",
       forceRedirect: true,
     };
   }, [host]);
+
+  // Don't render until we have a host
+  if (!appBridgeConfig.host) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Provider config={appBridgeConfig}>
