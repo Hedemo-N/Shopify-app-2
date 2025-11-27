@@ -1,16 +1,28 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../../frontend/lib/supabaseClient";
-import crypto from "crypto";
+
+import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
+
+// Shopify client initializer
+const shopify = shopifyApi({
+  apiKey: process.env.SHOPIFY_API_KEY!,
+  apiSecretKey: process.env.SHOPIFY_API_SECRET!,
+  scopes: process.env.SHOPIFY_SCOPES!.split(","),
+  hostName: process.env.SHOPIFY_APP_URL!.replace(/^https?:\/\//, ""),
+  apiVersion: ApiVersion.October25,
+  isEmbeddedApp: true,
+});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  console.log("✅ /api/auth/callback HIT");
+  console.log("🔥 /api/auth/callback HIT");
 
   const { shop, code, host } = req.query;
 
   if (!shop || !code || !host) {
-    return res.status(400).send("Missing params");
+    return res.status(400).send("Missing query params");
   }
 
+  // ---- EXCHANGE TEMP CODE FOR ACCESS TOKEN ----
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -24,41 +36,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const tokenData = await tokenResponse.json();
 
   if (!tokenData.access_token) {
-    return res.status(500).send("Token error");
+    console.error("❌ Missing access_token:", tokenData);
+    return res.status(500).send("Token exchange failed");
   }
 
   const accessToken = tokenData.access_token;
-  const merchantId = tokenData.associated_user?.id ?? null;
 
-  await supabase
-    .from("shopify_shops")
-    .upsert(
+  // Save shop → DB
+  await supabase.from("shopify_shops").upsert({
+    shop: shop.toString().toLowerCase(),
+    access_token: accessToken,
+    user_id: tokenData.associated_user?.id ?? null,
+    installed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "shop" });
+
+  console.log("💾 Saved shop:", shop);
+
+  // ---- REGISTER CARRIER SERVICE ----
+  try {
+    console.log("📡 Registering CarrierService...");
+
+    const register = await fetch(
+      `https://${shop}/admin/api/2025-10/carrier_services.json`,
       {
-        shop,
-        access_token: accessToken,
-        installed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        user_id: merchantId,
-      },
-      { onConflict: "shop" }
+        method: "POST",
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          carrier_service: {
+            name: "Blixt Delivery",
+            callback_url: `${process.env.SHOPIFY_APP_URL}/api/shipping-rates`,
+            service_discovery: true,
+          },
+        }),
+      }
     );
 
-  await fetch(`https://${shop}/admin/api/2024-10/carrier_services.json`, {
-    method: "POST",
-    headers: {
-      "X-Shopify-Access-Token": accessToken,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      carrier_service: {
-        name: "Blixt Delivery",
-        callback_url: `${process.env.SHOPIFY_APP_URL}/api/shipping-rates`,
-        service_discovery: true,
-      },
-    }),
-  });
+    const result = await register.json();
+    console.log("🚚 CarrierService response:", result);
 
-  // Redirect to embedded Shopify app
+  } catch (err) {
+    console.error("❌ CarrierService registration failed:", err);
+  }
+
+  // ---- EMBEDDED REDIRECT ----
   res.send(`
     <html>
       <head>
