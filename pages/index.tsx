@@ -1,3 +1,4 @@
+// pages/settings.tsx
 import {
   Page,
   Text,
@@ -6,9 +7,7 @@ import {
   Divider,
   Button,
   BlockStack,
-  Card,
 } from "@shopify/polaris";
-
 import { useState, useCallback, useEffect } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { getSessionToken } from "@shopify/app-bridge-utils";
@@ -40,6 +39,7 @@ export default function SettingsPage() {
     Butiksadress: "",
   });
 
+  // --- Load settings ---
   useEffect(() => {
     if (!router.isReady || !app) return;
 
@@ -51,8 +51,9 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
-      if (data.success && data.settings)
+      if (data.success && data.settings) {
         setForm((prev) => ({ ...prev, ...data.settings }));
+      }
 
       setLoading(false);
     };
@@ -63,6 +64,7 @@ export default function SettingsPage() {
   const handleChange = (field: string) => (value: any) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
+  // --- Save settings ---
   const handleSave = useCallback(async () => {
     const token = await getSessionToken(app);
 
@@ -75,154 +77,149 @@ export default function SettingsPage() {
       body: JSON.stringify({ shop, ...form }),
     });
 
-    if (res.ok) alert("Inställningarna har sparats! ⚡️");
-    else alert("Något gick fel.");
+    if (res.ok) {
+      alert("Inställningarna sparades! ⚡");
+    } else {
+      alert("Något gick fel. Försök igen.");
+    }
   }, [form]);
 
-  if (loading) return <p style={{ padding: 30 }}>Laddar...</p>;
+  if (loading)
+    return <p style={{ padding: 30 }}>Laddar inställningar...</p>;
 
   return (
-    <Page title="Blixt!!! Delivery – Inställningar">
-      <div style={{ maxWidth: 600, margin: "0 auto" }}>
-        <BlockStack gap="600">
+    <Page title="Blixt Delivery – Inställningar">
+      {/* ✨ Clean, centered container */}
+      <div
+        style={{
+          maxWidth: 600,
+          margin: "0 auto",
+          background: "white",
+          padding: 20,
+          border: "1px solid #e1e3e5",
+          borderRadius: 10,
+        }}
+      >
+        <BlockStack gap="400">
+          {/* CHECKBOX GROUP */}
+          <BlockStack gap="200">
+            <Checkbox
+              label="Ombud / Paketskåp"
+              checked={form.erbjuda_ombud}
+              onChange={handleChange("erbjuda_ombud")}
+            />
+            <Checkbox
+              label="Hemleverans Express 2h"
+              checked={form.erbjuda_hemleverans_express}
+              onChange={handleChange("erbjuda_hemleverans_express")}
+            />
+            <Checkbox
+              label="Hemleverans Kväll 17–22"
+              checked={form.erbjuda_hemleverans_kvall}
+              onChange={handleChange("erbjuda_hemleverans_kvall")}
+            />
+          </BlockStack>
 
-          {/* DELIVERY TYPE TOGGLES */}
-          <Card>
-            <BlockStack gap="400">
-              <Text variant="headingMd" as="h2">
-                Leveransalternativ
-              </Text>
+          <Divider />
 
-              <Checkbox
-                label="Ombud / Paketskåp"
-                checked={form.erbjuda_ombud}
-                onChange={handleChange("erbjuda_ombud")}
-              />
+          {/* OMBUD */}
+          <Text variant="headingLg" as="h2">
+            Ombud / Paketbox
+          </Text>
 
-              <Checkbox
-                label="Hemleverans Express 2h"
-                checked={form.erbjuda_hemleverans_express}
-                onChange={handleChange("erbjuda_hemleverans_express")}
-              />
+          <TextField
+            label="Pris (SEK)"
+            autoComplete="off"
+            value={form.pris_ombud}
+            onChange={handleChange("pris_ombud")}
+          />
+          <TextField
+            label="Antal ombudsalternativ som ska visas"
+            autoComplete="off"
+            value={form.number_box}
+            onChange={handleChange("number_box")}
+          />
+          <TextField
+            label="Cutoff-tid"
+            autoComplete="off"
+            value={form.cutoff_time_ombud}
+            onChange={handleChange("cutoff_time_ombud")}
+          />
 
-              <Checkbox
-                label="Hemleverans Kväll 17–22"
-                checked={form.erbjuda_hemleverans_kvall}
-                onChange={handleChange("erbjuda_hemleverans_kvall")}
-              />
-            </BlockStack>
-          </Card>
+          <Text as="p" variant="bodySm" tone="subdued">
+            Ändring av cutoff-tid kräver manuell justering – kontakta oss.
+          </Text>
 
-          {/* OMBUD SETTINGS */}
-          <Card>
-            <BlockStack gap="400">
-              <Text variant="headingMd" as="h2">
-                Ombud / Paketskåp
-              </Text>
+          <Divider />
 
-              <TextField
-                label="Pris (SEK)"
-                autoComplete="off"
-                value={form.pris_ombud}
-                onChange={handleChange("pris_ombud")}
-              />
+          {/* EXPRESS */}
+          <Text variant="headingLg" as="h2">
+            Hemleverans Express 2h
+          </Text>
 
-              <TextField
-                label="Antal ombud som ska synas"
-                autoComplete="off"
-                value={form.number_box}
-                onChange={handleChange("number_box")}
-              />
+          <TextField
+            label="Pris (SEK)"
+            autoComplete="off"
+            value={form.pris_hem2h}
+            onChange={handleChange("pris_hem2h")}
+          />
 
-              <TextField
-                label="Cutoff-tid"
-                autoComplete="off"
-                value={form.cutoff_time_ombud}
-                onChange={handleChange("cutoff_time_ombud")}
-              />
+          <Divider />
 
-              <Text variant="bodySm" tone="subdued" as="p">
-                Ändring av cutoff-tid kräver manuell justering – kontakta oss.
-              </Text>
-            </BlockStack>
-          </Card>
+          {/* EVENING */}
+          <Text variant="headingLg" as="h2">
+            Hemleverans Kväll (17–22)
+          </Text>
 
-          {/* EXPRESS SETTINGS */}
-          <Card>
-            <BlockStack gap="400">
-              <Text variant="headingMd" as="h2">
-                Hemleverans Express 2h
-              </Text>
+          <TextField
+            label="Pris (SEK)"
+            autoComplete="off"
+            value={form.pris_hemkvall}
+            onChange={handleChange("pris_hemkvall")}
+          />
+          <TextField
+            label="Cutoff-tid"
+            autoComplete="off"
+            value={form.cutoff_time_evening}
+            onChange={handleChange("cutoff_time_evening")}
+          />
 
-              <TextField
-                label="Pris (SEK)"
-                autoComplete="off"
-                value={form.pris_hem2h}
-                onChange={handleChange("pris_hem2h")}
-              />
-            </BlockStack>
-          </Card>
-
-          {/* EVENING SETTINGS */}
-          <Card>
-            <BlockStack gap="400">
-              <Text variant="headingMd" as="h2">
-                Hemleverans Kväll
-              </Text>
-
-              <TextField
-                label="Pris (SEK)"
-                autoComplete="off"
-                value={form.pris_hemkvall}
-                onChange={handleChange("pris_hemkvall")}
-              />
-
-              <TextField
-                label="Cutoff-tid"
-                autoComplete="off"
-                value={form.cutoff_time_evening}
-                onChange={handleChange("cutoff_time_evening")}
-              />
-            </BlockStack>
-          </Card>
+          <Divider />
 
           {/* STORE INFO */}
-          <Card>
-            <BlockStack gap="400">
-              <Text variant="headingMd" as="h2">
-                Butiksinformation
-              </Text>
+          <Text variant="headingLg" as="h2">
+            Butiksinformation
+          </Text>
 
-              <TextField
-                label="E-post för fraktetiketter"
-                autoComplete="off"
-                value={form.Butiksemail}
-                onChange={handleChange("Butiksemail")}
-              />
+          <TextField
+            label="E-post för fraktetiketter"
+            autoComplete="off"
+            value={form.Butiksemail}
+            onChange={handleChange("Butiksemail")}
+          />
+          <TextField
+            label="Telefonnummer"
+            autoComplete="off"
+            value={form.Butikstelefon}
+            onChange={handleChange("Butikstelefon")}
+          />
 
-              <TextField
-                label="Telefonnummer"
-                autoComplete="off"
-                value={form.Butikstelefon}
-                onChange={handleChange("Butikstelefon")}
-              />
+          <TextField
+            label="Öppettider"
+            multiline={4}
+            autoComplete="off"
+            value={form.opening_hours}
+            onChange={handleChange("opening_hours")}
+          />
 
-              <TextField
-                label="Öppettider"
-                multiline={4}
-                autoComplete="off"
-                value={form.opening_hours}
-                onChange={handleChange("opening_hours")}
-              />
+          <TextField
+            label="Butiksadress"
+            autoComplete="off"
+            value={form.Butiksadress}
+            onChange={handleChange("Butiksadress")}
+          />
 
-              <TextField
-                label="Butiksadress"
-                autoComplete="off"
-                value={form.Butiksadress}
-                onChange={handleChange("Butiksadress")}
-              />
-            </BlockStack>
-          </Card>
+          <Divider />
 
           <Button variant="primary" onClick={handleSave}>
             Spara inställningar
