@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@react-email/render": "^2.0.0",
     "@shopify/app-bridge": "^3.7.11",
     "@shopify/app-bridge-react": "^3.7.11",
     "@shopify/app-bridge-utils": "^3.5.1",
