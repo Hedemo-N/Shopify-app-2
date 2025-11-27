@@ -1,4 +1,5 @@
 // pages/_app.tsx
+import "@shopify/polaris/build/esm/styles.css";
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 
