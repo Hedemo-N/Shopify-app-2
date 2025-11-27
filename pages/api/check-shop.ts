@@ -42,8 +42,8 @@ async function lookupUserByShop(shop: string): Promise<string | null> {
   console.log("🔎 lookupUserByShop →", shop);
 
   const { data, error } = await supabase
-    .from("shopify_shops")
-    .select("user_id")
+    .from("profiles")
+    .select("id")
     .eq("shop", shop)
     .single();
 
@@ -52,5 +52,5 @@ async function lookupUserByShop(shop: string): Promise<string | null> {
     return null;
   }
 
-  return data?.user_id ?? null;
+  return data?.id ?? null;
 }
