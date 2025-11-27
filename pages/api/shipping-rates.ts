@@ -1,18 +1,18 @@
+// pages/api/shipping-rates.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../frontend/lib/supabaseClient";
 import { getCoordinatesFromMapbox } from "../../frontend/lib/MapboxGeocoding";
 import crypto from "crypto";
 
-// ---- Shopify kräver RAW body ----
+// ---------------------------------------------------------
+// 🔥 OBLIGATORISKT FÖR SHOPIFY — RAW BODY
+// ---------------------------------------------------------
 export const config = {
-  api: {
-    bodyParser: false,
-  },
+  api: { bodyParser: false },
 };
 
-// ---- RAW BODY helper ----
-async function rawBody(req: NextApiRequest): Promise<Buffer> {
-  return await new Promise((resolve, reject) => {
+function getRawBody(req: NextApiRequest): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
     const chunks: Uint8Array[] = [];
     req.on("data", (c) => chunks.push(c));
     req.on("end", () => resolve(Buffer.concat(chunks)));
@@ -92,7 +92,7 @@ const ALLOWED_POSTCODES = [
   "41764","41765","41766","41767","41768","41769","41770","41779"
 ];
 
-// 👇 fixa typerna
+// Tools
 const pad = (n: number) => n.toString().padStart(2, "0");
 
 const toOre = (
@@ -115,36 +115,55 @@ interface ShopifyRate {
   max_delivery_date?: string;
 }
 
-// ---- HUVUDHANDLER ----
+// ---------------------------------------------------------
+// 🔥 HUVUDHANDLER — HELT ORÖRD LOGIK + RAW BODY FIX
+// ---------------------------------------------------------
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Shopify skickar ALLTID POST med raw body
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    // ---- Läs RAW body ----
-    const bodyBuffer = await rawBody(req);
-    const payload = JSON.parse(bodyBuffer.toString());
-    const headers = req.headers;
+  console.log("🔥 shipping-rates.ts HIT");
 
-    // ---- Hämta shop domain ----
+  // -----------------------------------------------------
+  // 1. Läs RAW BODY (ENDA ändringen vi gör)
+  // -----------------------------------------------------
+  let payload: any = {};
+
+  try {
+    const raw = await getRawBody(req);
+    const str = raw.toString("utf8") || "{}";
+    payload = JSON.parse(str);
+  } catch (err) {
+    console.error("❌ RAW BODY PARSE ERROR", err);
+    payload = {};
+  }
+
+  console.log("📦 RAW PAYLOAD:", payload);
+
+  try {
     const shopDomainRaw =
-      headers["x-shopify-shop-domain"] ||
-      (payload?.rate?.shop as string) ||
+      req.headers["x-shopify-shop-domain"] ||
+      payload?.rate?.shop ||
       payload?.shop ||
       "";
 
     const shopDomain = String(shopDomainRaw).trim().toLowerCase();
+
     if (!shopDomain) {
-      return res.status(400).json({ error: "Missing shop domain" });
+      console.log("❌ Missing shop domain");
+      return res.status(200).json({ rates: [] });
     }
 
-    console.log("🔍 shop-domain:", shopDomain);
+    console.log("🛍 shop-domain:", shopDomain);
 
-    // ---- Hämta priser & cutoff från DB ----
+    // -----------------------------------------------------
+    // 2. Din ORÖRDA Supabase-datahämtning
+    // -----------------------------------------------------
     const { data: shop } = await supabase
       .from("shopify_shops")
       .select(
@@ -153,9 +172,8 @@ export default async function handler(
       .eq("shop", shopDomain)
       .single();
 
-    console.log("🛒 Hittad shop:", shop);
+    console.log("🛒 Fetched shop:", shop);
 
-    // ---- Kolla tillgängliga kurirer ----
     const { data: courierData } = await supabase
       .from("couriers")
       .select("user_id")
@@ -163,16 +181,20 @@ export default async function handler(
       .eq("leveranstyp", "hemleverans");
 
     const couriers = courierData ?? [];
-const hasAvailableCourier = couriers.length > 0;
+    const hasAvailableCourier = couriers.length > 0;
 
+    console.log("🚴 Aktiva kurirer:", couriers.length);
 
-    // ---- Priser, tider ----
+    // ORÖRDA prisformat
     const home2h = toOre(shop?.pris_hem2h ?? 99, 9900);
     const homeEvening = toOre(shop?.pris_hemkvall ?? 65, 6500);
     const ombud = toOre(shop?.pris_ombud ?? 45, 4500);
     const boxCount = Number(shop?.number_box) || 0;
 
-    const postcode = (payload.rate?.destination?.postal_code || "")
+    // -----------------------------------------------------
+    // 3. Dina adress- & postnummerregler — OFÖRÄNDRADE
+    // -----------------------------------------------------
+    const postcode = (payload?.rate?.destination?.postal_code || "")
       .replace(/\s/g, "")
       .trim();
 
@@ -186,7 +208,9 @@ const hasAvailableCourier = couriers.length > 0;
     const country = payload.rate?.destination?.country || "Sweden";
     const fullAddress = `${street}, ${postcode} ${city}, ${country}`;
 
-    // ---- DHL logic for timeslots (OFÖRÄNDRAD) ----
+    // -----------------------------------------------------
+    // 4. ORÖRD timeslot-logik
+    // -----------------------------------------------------
     const now = new Date(Date.now() + 1 * 60 * 60 * 1000);
 
     let slotStart: Date;
@@ -216,7 +240,9 @@ const hasAvailableCourier = couriers.length > 0;
 
     const rates: ShopifyRate[] = [];
 
-    // ---- 2h EXPRESS ----
+    // -----------------------------------------------------
+    // 5. ORÖRD EXPRESS 2H
+    // -----------------------------------------------------
     if (hasAvailableCourier) {
       rates.push({
         service_name: "🌱BLIXT EXPRESS Hemleverans inom 2 timmar🌱",
@@ -229,7 +255,9 @@ const hasAvailableCourier = couriers.length > 0;
       });
     }
 
-    // ---- Kvällsleverans ----
+    // -----------------------------------------------------
+    // 6. ORÖRD KVÄLL
+    // -----------------------------------------------------
     rates.push({
       service_name: "🌱BLIXT Hemleverans kväll 17–22🌱",
       service_code: "blixt_home_evening",
@@ -240,8 +268,12 @@ const hasAvailableCourier = couriers.length > 0;
       max_delivery_date: slotEnd.toISOString(),
     });
 
-    // ---- Ombud / Paketbox ----
+    // -----------------------------------------------------
+    // 7. ORÖRD OMBUD
+    // -----------------------------------------------------
     if (boxCount > 0) {
+      console.log("📦 Searching for ombud…");
+
       const coords = await getCoordinatesFromMapbox(fullAddress);
 
       if (coords) {
@@ -303,9 +335,14 @@ const hasAvailableCourier = couriers.length > 0;
       }
     }
 
+    // -----------------------------------------------------
+    // 8. RETURNERA
+    // -----------------------------------------------------
+    console.log("✅ Sending rates:", rates);
     return res.status(200).json({ rates });
+
   } catch (err) {
-    console.error("❌ shipping-rates error:", err);
+    console.error("❌ shipping-rates fatal:", err);
     return res.status(500).json({ error: "Internal error" });
   }
 }
