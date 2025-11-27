@@ -4,6 +4,7 @@ import type { AppProps } from "next/app";
 import { Provider } from "@shopify/app-bridge-react";
 import { useRouter } from "next/router";
 import { useMemo, useEffect, useState } from "react";
+import Head from "next/head";
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -41,8 +42,17 @@ export default function App({ Component, pageProps }: AppProps) {
   }
 
   return (
-    <Provider config={appBridgeConfig}>
-      <Component {...pageProps} />
-    </Provider>
+    <>
+      <Head>
+        {/* Load App Bridge from Shopify's CDN - REQUIRED for app approval */}
+        <script
+          src="https://cdn.shopify.com/shopifycloud/app-bridge.js"
+          async
+        />
+      </Head>
+      <Provider config={appBridgeConfig}>
+        <Component {...pageProps} />
+      </Provider>
+    </>
   );
 }
