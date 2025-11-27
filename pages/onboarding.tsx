@@ -26,30 +26,34 @@ function OnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Shopify session token (krav för embedded apps)
-    const token = await getSessionToken(app);
+    try {
+      const token = await getSessionToken(app);
 
-    const payload = {
-      shop,
-      host,
-      ...form,
-    };
+      const payload = {
+        shop,
+        host,
+        ...form,
+      };
 
-    // 🔥 Skicka mail till dig via API-route
-    const res = await fetch("/api/send-onboarding-email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
+      const res = await fetch("/api/send-onboarding-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (res.ok) {
-      // Klart – skicka tillbaka till admin panel
-      router.push(`/?shop=${shop}&host=${host}`);
-    } else {
-      alert("Något gick fel. Kontakta support 🙏");
+      if (res.ok) {
+        router.push(`/?shop=${shop}&host=${host}`);
+      } else {
+        const errorData = await res.json();
+        console.error("API error:", errorData);
+        alert(`Något gick fel: ${errorData.error || 'Okänt fel'}`);
+      }
+    } catch (error) {
+      console.error("Submit error:", error);
+      alert("Kunde inte skicka formuläret. Kontakta support 🙏");
     }
   };
 
