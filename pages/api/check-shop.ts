@@ -43,7 +43,7 @@ async function lookupUserByShop(shop: string): Promise<string | null> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id")
+    .select("_id")
     .eq("shop", shop)
     .single();
 
@@ -52,5 +52,5 @@ async function lookupUserByShop(shop: string): Promise<string | null> {
     return null;
   }
 
-  return data?.id ?? null;
+  return data?._id ?? null;
 }
