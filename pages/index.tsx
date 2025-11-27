@@ -1,4 +1,3 @@
-// pages/settings.tsx
 import {
   Page,
   Text,
@@ -8,6 +7,7 @@ import {
   Button,
   BlockStack,
 } from "@shopify/polaris";
+
 import { useState, useCallback, useEffect } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { getSessionToken } from "@shopify/app-bridge-utils";
@@ -39,13 +39,11 @@ export default function SettingsPage() {
     Butiksadress: "",
   });
 
-  // --- Load existing settings ---
   useEffect(() => {
     if (!router.isReady || !app) return;
 
     const load = async () => {
       const token = await getSessionToken(app);
-
       const res = await fetch(`/api/get-settings?shop=${shop}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -64,7 +62,6 @@ export default function SettingsPage() {
   const handleChange = (field: string) => (value: any) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
-  // --- Save settings ---
   const handleSave = useCallback(async () => {
     const token = await getSessionToken(app);
 
@@ -77,23 +74,19 @@ export default function SettingsPage() {
       body: JSON.stringify({ shop, ...form }),
     });
 
-    if (res.ok) {
-      alert("Inställningarna sparades! ⚡");
-    } else {
-      alert("Något gick fel. Försök igen.");
-    }
+    if (res.ok) alert("Inställningarna har sparats!");
+    else alert("Något gick fel.");
   }, [form]);
 
   if (loading) return <p style={{ padding: 30 }}>Laddar...</p>;
 
   return (
     <Page title="Blixt Delivery – Inställningar">
-      {/* CENTERED CONTAINER – exactly like your HTML */}
       <div style={{ maxWidth: 600, margin: "0 auto" }}>
-        <BlockStack gap="400">
+        <BlockStack gap="500">
 
           {/* TOGGLES */}
-          <BlockStack gap="200">
+          <BlockStack gap="300">
             <Checkbox
               label="Ombud / Paketskåp"
               checked={form.erbjuda_ombud}
@@ -114,7 +107,7 @@ export default function SettingsPage() {
           <Divider />
 
           {/* OMBUD */}
-          <Text variant="headingLg" as="h2">Ombud</Text>
+          <Text as="h2" variant="headingLg">Ombud</Text>
           <TextField
             label="Pris (SEK)"
             autoComplete="off"
@@ -135,13 +128,12 @@ export default function SettingsPage() {
           />
           <Text as="p" variant="bodySm" tone="subdued">
             Ändring av cutoff-tid kräver manuell justering – kontakta oss.
-            </Text>
-
+          </Text>
 
           <Divider />
 
           {/* EXPRESS */}
-          <Text variant="headingLg" as="h2">Hemleverans Express 2h</Text>
+          <Text as="h2" variant="headingLg">Hemleverans Express 2h</Text>
           <TextField
             label="Pris (SEK)"
             autoComplete="off"
@@ -152,7 +144,7 @@ export default function SettingsPage() {
           <Divider />
 
           {/* KVÄLL */}
-          <Text variant="headingLg" as="h2">Hemleverans Kväll</Text>
+          <Text as="h2" variant="headingLg">Hemleverans Kväll</Text>
           <TextField
             label="Pris (SEK)"
             autoComplete="off"
@@ -169,7 +161,7 @@ export default function SettingsPage() {
           <Divider />
 
           {/* STORE INFO */}
-          <Text variant="headingLg" as="h2">Butiksinformation</Text>
+          <Text as="h2" variant="headingLg">Butiksinformation</Text>
           <TextField
             label="E-post för fraktetiketter"
             autoComplete="off"

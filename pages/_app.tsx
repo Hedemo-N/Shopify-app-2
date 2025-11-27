@@ -4,7 +4,6 @@ import type { AppProps } from "next/app";
 
 import { Provider as AppBridgeProvider } from "@shopify/app-bridge-react";
 import { AppProvider as PolarisAppProvider } from "@shopify/polaris";
-
 import enTranslations from "@shopify/polaris/locales/en.json";
 
 import { useRouter } from "next/router";
@@ -15,54 +14,45 @@ export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
 
-  // Only run on client side
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  useEffect(() => setIsClient(true), []);
 
   const host = useMemo(() => {
     if (!isClient) return "";
 
-    // Get from router first
-    if (router.query.host) {
-      return router.query.host as string;
-    }
+    if (router.query.host) return router.query.host as string;
 
-    // Fallback to URL params
     const params = new URLSearchParams(window.location.search);
     return params.get("host") || "";
   }, [router.query.host, isClient]);
 
-  const appBridgeConfig = useMemo(() => {
-    return {
+  const appBridgeConfig = useMemo(
+    () => ({
       apiKey: process.env.NEXT_PUBLIC_SHOPIFY_API_KEY || "",
-      host: host,
+      host,
       forceRedirect: true,
-    };
-  }, [host]);
+    }),
+    [host]
+  );
 
-  // Don't render until client-side and we have a host
-  if (!isClient || !appBridgeConfig.host) {
-    return <div>Loading...</div>;
-  }
+  if (!isClient || !appBridgeConfig.host) return <div>Loading...</div>;
 
   return (
     <>
       <Head>
-        {/* Load App Bridge from Shopify's CDN - REQUIRED for app approval */}
-        <script
-          src="https://cdn.shopify.com/shopifycloud/app-bridge.js"
-          async
+        <meta
+          name="shopify-api-key"
+          content={process.env.NEXT_PUBLIC_SHOPIFY_API_KEY}
         />
+
+        {/* IMPORTANT: No async, must be first script */}
+        <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" />
       </Head>
 
-      {/* 🔥 AppBridge först (oförändrat) */}
-      <AppBridgeProvider config={appBridgeConfig}>
-        {/* 🔥 Polaris wrapper – ENDA tillägget du behövde */}
-        <PolarisAppProvider i18n={enTranslations}>
+      <PolarisAppProvider i18n={enTranslations}>
+        <AppBridgeProvider config={appBridgeConfig}>
           <Component {...pageProps} />
-        </PolarisAppProvider>
-      </AppBridgeProvider>
+        </AppBridgeProvider>
+      </PolarisAppProvider>
     </>
   );
 }
