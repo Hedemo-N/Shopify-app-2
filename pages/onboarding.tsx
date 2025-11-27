@@ -26,7 +26,8 @@ function OnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const token = await getSessionToken(app); // 🔥 viktigt
+    // Shopify session token (krav för embedded apps)
+    const token = await getSessionToken(app);
 
     const payload = {
       shop,
@@ -34,16 +35,18 @@ function OnboardingPage() {
       ...form,
     };
 
-    const res = await fetch("/api/onboarding-complete", {
+    // 🔥 Skicka mail till dig via API-route
+    const res = await fetch("/api/send-onboarding-email", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // 🔥 NYTT!
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
     });
 
     if (res.ok) {
+      // Klart – skicka tillbaka till admin panel
       router.push(`/?shop=${shop}&host=${host}`);
     } else {
       alert("Något gick fel. Kontakta support 🙏");
@@ -51,40 +54,63 @@ function OnboardingPage() {
   };
 
   return (
-    <div style={{ padding: 30, maxWidth: 600, margin: "auto" }}>
-      <h2>Välkommen till Blixt Delivery 🚀</h2>
+    <div style={{ padding: 30, maxWidth: 500, margin: "auto" }}>
+      <h2>Blixt Delivery – Onboarding 🚀</h2>
+      <p style={{ marginBottom: 20 }}>
+        Fyll i informationen nedan så kontaktar vi dig inom kort.
+      </p>
+
       <form onSubmit={handleSubmit}>
-        <input
-          id="company"
-          placeholder="Företagsnamn"
-          value={form.company}
-          onChange={handleChange}
-          required
-        />
-        <input
-          id="contact"
-          placeholder="Kontaktperson"
-          value={form.contact}
-          onChange={handleChange}
-          required
-        />
-        <input
-          id="email"
-          placeholder="E-post"
-          value={form.email}
-          onChange={handleChange}
-          required
-        />
-        <input
-          id="phone"
-          placeholder="Telefonnummer"
-          value={form.phone}
-          onChange={handleChange}
-          required
-        />
-        <button type="submit" style={{ marginTop: 12 }}>
-          Fortsätt
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <input
+            id="company"
+            placeholder="Företagsnamn"
+            value={form.company}
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            id="contact"
+            placeholder="Kontaktperson"
+            value={form.contact}
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            id="email"
+            placeholder="E-post"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            id="phone"
+            placeholder="Telefonnummer"
+            value={form.phone}
+            onChange={handleChange}
+            required
+          />
+
+          <button
+            type="submit"
+            style={{
+              marginTop: 16,
+              padding: "10px 16px",
+              background: "#0c80ff",
+              color: "white",
+              border: "none",
+              cursor: "pointer",
+              borderRadius: 6,
+              fontSize: 16,
+            }}
+          >
+            Skicka
+          </button>
+        </div>
       </form>
     </div>
   );
