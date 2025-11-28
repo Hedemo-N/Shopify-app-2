@@ -39,7 +39,7 @@ export default function App({ Component, pageProps }: AppProps) {
     };
   }, [host]);
 
-  // Don’t render until client-side & host loaded
+  // Don't render until client-side & host loaded
   if (!isClient || !appBridgeConfig.host) {
     return <div style={{ padding: 20 }}>Loading app…</div>;
   }
@@ -53,8 +53,11 @@ export default function App({ Component, pageProps }: AppProps) {
           content={process.env.NEXT_PUBLIC_SHOPIFY_API_KEY}
         />
 
-        {/* Must NOT have async/defer/type=module */}
+        {/* App Bridge script - Must NOT have async/defer/type=module */}
         <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" />
+        
+        {/* Polaris Web Components - CRITICAL FOR APPROVAL */}
+        <script src="https://cdn.shopify.com/shopifycloud/polaris.js" />
       </Head>
 
       {/* App Bridge Provider FIRST */}
