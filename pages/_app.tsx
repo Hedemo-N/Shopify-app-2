@@ -15,7 +15,6 @@ export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
 
-  // App Bridge must run on client only
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -39,7 +38,6 @@ export default function App({ Component, pageProps }: AppProps) {
     };
   }, [host]);
 
-  // Don't render until client-side & host loaded
   if (!isClient || !appBridgeConfig.host) {
     return <div style={{ padding: 20 }}>Loading app…</div>;
   }
@@ -47,22 +45,22 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        {/* REQUIRED for app approval */}
         <meta
           name="shopify-api-key"
           content={process.env.NEXT_PUBLIC_SHOPIFY_API_KEY}
         />
-
-        {/* App Bridge script - Must NOT have async/defer/type=module */}
-        <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" />
-        
-        {/* Polaris Web Components - CRITICAL FOR APPROVAL */}
-        <script src="https://cdn.shopify.com/shopifycloud/polaris.js" />
+        {/* CRITICAL: Use dangerouslySetInnerHTML to force synchronous loading */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              document.write('<script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"><\\/script>');
+              document.write('<script src="https://cdn.shopify.com/shopifycloud/polaris.js"><\\/script>');
+            `,
+          }}
+        />
       </Head>
 
-      {/* App Bridge Provider FIRST */}
       <AppBridgeProvider config={appBridgeConfig}>
-        {/* Polaris wrapper (REQUIRED: gives i18n) */}
         <PolarisAppProvider i18n={enTranslations}>
           <Component {...pageProps} />
         </PolarisAppProvider>
