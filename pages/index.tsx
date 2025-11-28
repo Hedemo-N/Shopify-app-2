@@ -20,6 +20,7 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(true);
 
+  // ➤ Ny form med separata öppettider-fält
   const [form, setForm] = useState({
     erbjuda_ombud: false,
     erbjuda_hemleverans_express: false,
@@ -35,8 +36,15 @@ export default function SettingsPage() {
 
     Butiksemail: "",
     Butikstelefon: "",
-    opening_hours: "",
     Butiksadress: "",
+
+    monday: "",
+    tuesday: "",
+    wednesday: "",
+    thursday: "",
+    friday: "",
+    saturday: "",
+    sunday: "",
   });
 
   // --- Load settings ---
@@ -51,8 +59,42 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
+
       if (data.success && data.settings) {
-        setForm((prev) => ({ ...prev, ...data.settings }));
+        const s = data.settings;
+
+        // ➤ Konvertera opening_hours { monday: [{open,close}], ... }
+        const opening = s.opening_hours || {};
+
+        const parsedOpening = {
+          monday: opening.monday?.[0]
+            ? `${opening.monday[0].open} - ${opening.monday[0].close}`
+            : "",
+          tuesday: opening.tuesday?.[0]
+            ? `${opening.tuesday[0].open} - ${opening.tuesday[0].close}`
+            : "",
+          wednesday: opening.wednesday?.[0]
+            ? `${opening.wednesday[0].open} - ${opening.wednesday[0].close}`
+            : "",
+          thursday: opening.thursday?.[0]
+            ? `${opening.thursday[0].open} - ${opening.thursday[0].close}`
+            : "",
+          friday: opening.friday?.[0]
+            ? `${opening.friday[0].open} - ${opening.friday[0].close}`
+            : "",
+          saturday: opening.saturday?.[0]
+            ? `${opening.saturday[0].open} - ${opening.saturday[0].close}`
+            : "",
+          sunday: opening.sunday?.[0]
+            ? `${opening.sunday[0].open} - ${opening.sunday[0].close}`
+            : "",
+        };
+
+        setForm((prev) => ({
+          ...prev,
+          ...s,
+          ...parsedOpening,
+        }));
       }
 
       setLoading(false);
@@ -84,12 +126,10 @@ export default function SettingsPage() {
     }
   }, [form]);
 
-  if (loading)
-    return <p style={{ padding: 30 }}>Laddar inställningar...</p>;
+  if (loading) return <p style={{ padding: 30 }}>Laddar inställningar...</p>;
 
   return (
     <Page title="Blixt Delivery – Inställningar">
-      {/* ✨ Clean, centered container */}
       <div
         style={{
           maxWidth: 600,
@@ -101,6 +141,7 @@ export default function SettingsPage() {
         }}
       >
         <BlockStack gap="400">
+
           {/* CHECKBOX GROUP */}
           <BlockStack gap="200">
             <Checkbox
@@ -123,94 +164,44 @@ export default function SettingsPage() {
           <Divider />
 
           {/* OMBUD */}
-          <Text variant="headingLg" as="h2">
-            Ombud / Paketbox
-          </Text>
-
-          <TextField
-            label="Pris (SEK)"
-            autoComplete="off"
-            value={form.pris_ombud}
-            onChange={handleChange("pris_ombud")}
-          />
-          <TextField
-            label="Antal ombudsalternativ som ska visas"
-            autoComplete="off"
-            value={form.number_box}
-            onChange={handleChange("number_box")}
-          />
-          <TextField
-            label="Cutoff-tid"
-            autoComplete="off"
-            value={form.cutoff_time_ombud}
-            onChange={handleChange("cutoff_time_ombud")}
-          />
-
-          <Text as="p" variant="bodySm" tone="subdued">
-            Ändring av cutoff-tid kräver manuell justering – kontakta oss.
-          </Text>
+          <Text variant="headingLg" as="h2">Ombud / Paketbox</Text>
+          <TextField label="Pris" autoComplete="off" value={form.pris_ombud} onChange={handleChange("pris_ombud")} />
+          <TextField label="Antal ombud" autoComplete="off" value={form.number_box} onChange={handleChange("number_box")} />
+          <TextField label="Cutoff-tid" autoComplete="off" value={form.cutoff_time_ombud} onChange={handleChange("cutoff_time_ombud")} />
 
           <Divider />
 
           {/* EXPRESS */}
-          <Text variant="headingLg" as="h2">
-            Hemleverans Express 2h
-          </Text>
-
-          <TextField
-            label="Pris (SEK)"
-            autoComplete="off"
-            value={form.pris_hem2h}
-            onChange={handleChange("pris_hem2h")}
-          />
+          <Text variant="headingLg" as="h2">Hemleverans Express 2h</Text>
+          <TextField label="Pris" autoComplete="off" value={form.pris_hem2h} onChange={handleChange("pris_hem2h")} />
 
           <Divider />
 
           {/* EVENING */}
-          <Text variant="headingLg" as="h2">
-            Hemleverans Kväll (17–22)
-          </Text>
-
-          <TextField
-            label="Pris (SEK)"
-            autoComplete="off"
-            value={form.pris_hemkvall}
-            onChange={handleChange("pris_hemkvall")}
-          />
-          <TextField
-            label="Cutoff-tid"
-            autoComplete="off"
-            value={form.cutoff_time_evening}
-            onChange={handleChange("cutoff_time_evening")}
-          />
+          <Text variant="headingLg" as="h2">Hemleverans Kväll 17–22</Text>
+          <TextField label="Pris" autoComplete="off" value={form.pris_hemkvall} onChange={handleChange("pris_hemkvall")} />
+          <TextField label="Cutoff-tid" autoComplete="off" value={form.cutoff_time_evening} onChange={handleChange("cutoff_time_evening")} />
 
           <Divider />
 
           {/* STORE INFO */}
-          <Text variant="headingLg" as="h2">
-            Butiksinformation
-          </Text>
+          <Text variant="headingLg" as="h2">Butiksinformation</Text>
+          <TextField label="E-post" autoComplete="off" value={form.Butiksemail} onChange={handleChange("Butiksemail")} />
+          <TextField label="Telefonnummer" autoComplete="off" value={form.Butikstelefon} onChange={handleChange("Butikstelefon")} />
 
-          <TextField
-            label="E-post för fraktetiketter"
-            autoComplete="off"
-            value={form.Butiksemail}
-            onChange={handleChange("Butiksemail")}
-          />
-          <TextField
-            label="Telefonnummer"
-            autoComplete="off"
-            value={form.Butikstelefon}
-            onChange={handleChange("Butikstelefon")}
-          />
+          <Divider />
 
-          <TextField
-            label="Öppettider"
-            multiline={4}
-            autoComplete="off"
-            value={form.opening_hours}
-            onChange={handleChange("opening_hours")}
-          />
+          {/* OPENING HOURS */}
+          <Text variant="headingLg" as="h2">Öppettider</Text>
+          <TextField label="Måndag (t.ex. 10:00 - 18:00)" autoComplete="off" value={form.monday} onChange={handleChange("monday")} />
+          <TextField label="Tisdag" autoComplete="off" value={form.tuesday} onChange={handleChange("tuesday")} />
+          <TextField label="Onsdag" autoComplete="off" value={form.wednesday} onChange={handleChange("wednesday")} />
+          <TextField label="Torsdag" autoComplete="off" value={form.thursday} onChange={handleChange("thursday")} />
+          <TextField label="Fredag" autoComplete="off" value={form.friday} onChange={handleChange("friday")} />
+          <TextField label="Lördag" autoComplete="off" value={form.saturday} onChange={handleChange("saturday")} />
+          <TextField label="Söndag" autoComplete="off" value={form.sunday} onChange={handleChange("sunday")} />
+
+          <Divider />
 
           <TextField
             label="Butiksadress"
@@ -219,11 +210,8 @@ export default function SettingsPage() {
             onChange={handleChange("Butiksadress")}
           />
 
-          <Divider />
+          <Button variant="primary" onClick={handleSave}>Spara inställningar</Button>
 
-          <Button variant="primary" onClick={handleSave}>
-            Spara inställningar
-          </Button>
         </BlockStack>
       </div>
     </Page>
