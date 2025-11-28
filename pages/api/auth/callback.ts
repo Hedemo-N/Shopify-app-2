@@ -1,9 +1,10 @@
+// pages/api/auth/callback.ts
+
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../../frontend/lib/supabaseClient";
-
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 
-// Shopify client initializer
+// Shopify client
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
   apiSecretKey: process.env.SHOPIFY_API_SECRET!,
@@ -42,16 +43,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const accessToken = tokenData.access_token;
 
-  // Save shop → DB
-  await supabase.from("shopify_shops").upsert({
-    shop: shop.toString().toLowerCase(),
-    access_token: accessToken,
-    user_id: tokenData.associated_user?.id ?? null,
-    installed_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "shop" });
+  // ---- SAVE SHOP IN DB ----
+  await supabase.from("shopify_shops").upsert(
+    {
+      shop: shop.toString().toLowerCase(),
+      access_token: accessToken,
+      user_id: tokenData.associated_user?.id ?? null,
+      installed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "shop" }
+  );
 
   console.log("💾 Saved shop:", shop);
+
+  // ---- CHECK IF PROFILE EXISTS TO DECIDE REDIRECT ----
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("shop", shop.toString().toLowerCase())
+    .maybeSingle();
+
+  const redirectTarget = profile
+    ? `/?shop=${shop}&host=${host}`         // ADMIN
+    : `/onboarding?shop=${shop}&host=${host}`; // FIRST TIME
+
+  console.log("➡️ Redirecting to:", redirectTarget);
 
   // ---- REGISTER CARRIER SERVICE ----
   try {
@@ -100,7 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           Redirect.create(app).dispatch(
             Redirect.Action.APP,
-            "/?shop=${shop}&host=${host}"
+            "${redirectTarget}"
           );
         </script>
       </body>
