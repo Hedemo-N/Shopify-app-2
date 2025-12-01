@@ -21,7 +21,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     <!DOCTYPE html>
     <html>
       <head>
-        <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+       <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+
       </head>
       <body>
         <script>

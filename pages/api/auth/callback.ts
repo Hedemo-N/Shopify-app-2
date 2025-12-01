@@ -103,7 +103,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.send(`
     <html>
       <head>
-        <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+        <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+
       </head>
       <body>
         <script>
