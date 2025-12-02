@@ -2,7 +2,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../../frontend/lib/supabaseClient";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 
-// Shopify client
+// Token store (OBS: dör vid ny deploy – byt till Redis för prod)
+const accessTokenStore = new Map<string, string>();
+
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
   apiSecretKey: process.env.SHOPIFY_API_SECRET!,
@@ -11,7 +13,6 @@ const shopify = shopifyApi({
   apiVersion: ApiVersion.October25,
   isEmbeddedApp: true,
 });
-// ...samma imports som innan...
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log("🔥 [callback] Endpoint HIT");
@@ -48,36 +49,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const accessToken = tokenData.access_token;
 
-  // 🧾 LOGGA UT ACCESS TOKEN SÅ DU KAN SPARA DET SJÄLV
-  console.log("🧾 Kopiera och spara i Supabase manuellt:");
-  console.log(JSON.stringify({
+  // ✅ Spara token tillfälligt i minnet
+  accessTokenStore.set(shop.toString().toLowerCase(), accessToken);
+  console.log("🧠 Token sparad i minne:", {
     shop: shop.toString().toLowerCase(),
-    access_token: accessToken,
-    user_id: tokenData.associated_user?.id ?? null,
-    installed_at: new Date().toISOString(),
-  }, null, 2));
+    token: accessToken,
+  });
+
+  // 📦 Logga för manuell backup
+  console.log("🧾 Kopiera och spara i Supabase manuellt:");
+  console.log(
+    JSON.stringify(
+      {
+        shop: shop.toString().toLowerCase(),
+        access_token: accessToken,
+        user_id: tokenData.associated_user?.id ?? null,
+        installed_at: new Date().toISOString(),
+      },
+      null,
+      2
+    )
+  );
 
   // ---- CONTINUE WITH CARRIER SERVICE ----
   try {
     console.log("📡 Registrerar CarrierService...");
 
-    const register = await fetch(
-      `https://${shop}/admin/api/2025-10/carrier_services.json`,
-      {
-        method: "POST",
-        headers: {
-          "X-Shopify-Access-Token": accessToken,
-          "Content-Type": "application/json",
+    const register = await fetch(`https://${shop}/admin/api/2025-10/carrier_services.json`, {
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        carrier_service: {
+          name: "Blixt Delivery",
+          callback_url: `${process.env.SHOPIFY_APP_URL}/api/shipping-rates`,
+          service_discovery: true,
         },
-        body: JSON.stringify({
-          carrier_service: {
-            name: "Blixt Delivery",
-            callback_url: `${process.env.SHOPIFY_APP_URL}/api/shipping-rates`,
-            service_discovery: true,
-          },
-        }),
-      }
-    );
+      }),
+    });
 
     const result = await register.json();
     console.log("🚚 CarrierService response:", result);
@@ -92,7 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   );
 
   // ---- EMBEDDED REDIRECT ----
-  const redirectTarget = `/?shop=${shop}&host=${host}&token=${accessToken}`;
+  const redirectTarget = `/onboarding?shop=${shop}&host=${host}&token=${accessToken}`;
   console.log("➡️ Redirect-path:", redirectTarget);
   console.log("🔁 Gör embedded redirect med App Bridge");
 
@@ -120,3 +131,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     </html>
   `);
 }
+
+// Exportera tokenStore för extern åtkomst (om du vill använda det i andra filer)
+export { accessTokenStore };

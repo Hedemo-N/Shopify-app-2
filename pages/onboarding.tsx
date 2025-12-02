@@ -10,15 +10,17 @@ function OnboardingPage() {
 
   const [shopReady, setShopReady] = useState(false);
 
-  const shop = typeof router.query.shop === "string" ? router.query.shop : "";
-const host = typeof router.query.host === "string" ? router.query.host : "";
-const access_token = typeof router.query.token === "string" ? router.query.token : "";
+  const { shop, host, token } = router.query;
+
+  const [accessToken, setAccessToken] = useState("");
 
   useEffect(() => {
-    if (shop && host) {
+    if (shop && host && token) {
+      setAccessToken(token as string);
       setShopReady(true);
+      console.log("✅ token mottaget i onboarding:", token);
     }
-  }, [shop, host]);
+  }, [shop, host, token]);
 
   const [form, setForm] = useState({
     company: "",
@@ -35,18 +37,18 @@ const access_token = typeof router.query.token === "string" ? router.query.token
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!shop || !host) {
-      alert("shop eller host saknas – kan inte skicka formulär");
+    if (!shop || !host || !accessToken) {
+      alert("shop, host eller access_token saknas – kan inte skicka formulär");
       return;
     }
 
     try {
-      const token = await getSessionToken(app);
+      const sessionToken = await getSessionToken(app);
 
       const payload = {
         shop,
         host,
-        access_token,
+        access_token: accessToken,
         ...form,
       };
 
@@ -54,7 +56,7 @@ const access_token = typeof router.query.token === "string" ? router.query.token
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${sessionToken}`,
         },
         body: JSON.stringify(payload),
       });
@@ -74,7 +76,7 @@ const access_token = typeof router.query.token === "string" ? router.query.token
   };
 
   if (!shopReady) {
-    return <p style={{ padding: 20 }}>🔄 Väntar på att shop & host ska laddas...</p>;
+    return <p style={{ padding: 20 }}>🔄 Väntar på att shop, host & token ska laddas...</p>;
   }
 
   return (
