@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 // Kontrollera Supabase istället för cookie
 const { data: existingShop } = await supabase
   .from("profiles")
-  .select("id")
+  .select("_id")
   .eq("shop", shop)
   .maybeSingle();
 
