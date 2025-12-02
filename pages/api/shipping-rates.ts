@@ -129,6 +129,8 @@ export default async function handler(
 
   console.log("🔥 shipping-rates.ts HIT");
 
+res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+
   // -----------------------------------------------------
   // 1. Läs RAW BODY (ENDA ändringen vi gör)
   // -----------------------------------------------------

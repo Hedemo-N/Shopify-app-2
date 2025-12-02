@@ -16,6 +16,7 @@ const shopify = shopifyApi({
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log("🔥 /api/auth/callback HIT");
+res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
 
   const { shop, code, host } = req.query;
 
