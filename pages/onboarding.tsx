@@ -1,5 +1,4 @@
-// pages/onboarding.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { getSessionToken } from "@shopify/app-bridge-utils";
@@ -18,22 +17,33 @@ function OnboardingPage() {
     phone: "",
   });
 
+  useEffect(() => {
+    console.log("🟡 OnboardingPage mountas");
+    console.log("➡️ router.query.shop:", shop);
+    console.log("➡️ router.query.host:", host);
+  }, [shop, host]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
+    console.log(`✏️ Fält ändrat: ${id} = ${value}`);
     setForm((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("📤 Skickar onboarding-formulär...", form);
 
     try {
       const token = await getSessionToken(app);
+      console.log("🔑 Hämtade sessionToken");
 
       const payload = {
         shop,
         host,
         ...form,
       };
+
+      console.log("📦 Payload som skickas till API:", payload);
 
       const res = await fetch("/api/send-onboarding-email", {
         method: "POST",
@@ -45,21 +55,22 @@ function OnboardingPage() {
       });
 
       if (res.ok) {
+        console.log("✅ Onboarding-formulär skickat!");
         router.push(`/?shop=${shop}&host=${host}`);
       } else {
         const errorData = await res.json();
-        console.error("API error:", errorData);
-        alert(`Något gick fel: ${errorData.error || 'Okänt fel'}`);
+        console.error("❌ API-fel:", errorData);
+        alert(`Något gick fel: ${errorData.error || "Okänt fel"}`);
       }
     } catch (error) {
-      console.error("Submit error:", error);
+      console.error("❌ Submit error:", error);
       alert("Kunde inte skicka formuläret. Kontakta support 🙏");
     }
   };
 
   return (
     <div style={{ padding: 30, maxWidth: 500, margin: "auto" }}>
-      <h2>Blixt Delivery – Onboarding 🚀</h2>
+      <h2>Blixt Delivery – Onboarding </h2>
       <p style={{ marginBottom: 20 }}>
         Fyll i informationen nedan så kontaktar vi dig inom kort.
       </p>

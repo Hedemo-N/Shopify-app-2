@@ -1,5 +1,3 @@
-// pages/api/auth/callback.ts
-
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../../frontend/lib/supabaseClient";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
@@ -15,16 +13,20 @@ const shopify = shopifyApi({
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  console.log("🔥 /api/auth/callback HIT");
-res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  console.log("🔥 [callback] Endpoint HIT");
+
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
 
   const { shop, code, host } = req.query;
+  console.log("📥 Query params:", { shop, code, host });
 
   if (!shop || !code || !host) {
+    console.warn("⚠️ Saknas query-parametrar");
     return res.status(400).send("Missing query params");
   }
 
   // ---- EXCHANGE TEMP CODE FOR ACCESS TOKEN ----
+  console.log("🔄 Byter kod mot access_token...");
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -36,16 +38,18 @@ res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-reval
   });
 
   const tokenData = await tokenResponse.json();
+  console.log("🔐 Token data mottaget:", tokenData);
 
   if (!tokenData.access_token) {
-    console.error("❌ Missing access_token:", tokenData);
+    console.error("❌ Ingen access_token:", tokenData);
     return res.status(500).send("Token exchange failed");
   }
 
   const accessToken = tokenData.access_token;
 
   // ---- SAVE SHOP IN DB ----
-  await supabase.from("shopify_shops").upsert(
+  console.log("💾 Sparar shop i supabase...");
+  const { error: upsertError } = await supabase.from("shopify_shops").upsert(
     {
       shop: shop.toString().toLowerCase(),
       access_token: accessToken,
@@ -56,24 +60,33 @@ res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-reval
     { onConflict: "shop" }
   );
 
-  console.log("💾 Saved shop:", shop);
+  if (upsertError) {
+    console.error("❌ Supabase upsert error:", upsertError);
+  } else {
+    console.log("✅ Shop sparad:", shop);
+  }
 
   // ---- CHECK IF PROFILE EXISTS TO DECIDE REDIRECT ----
-  const { data: profile } = await supabase
+  console.log("🔍 Kollar om profile finns...");
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("id")
     .eq("shop", shop.toString().toLowerCase())
     .maybeSingle();
 
-  const redirectTarget = profile
-    ? `/?shop=${shop}&host=${host}`         // ADMIN
-    : `/onboarding?shop=${shop}&host=${host}`; // FIRST TIME
+  if (profileError) {
+    console.error("❌ Supabase profile error:", profileError);
+  }
 
-  console.log("➡️ Redirecting to:", redirectTarget);
+  const redirectTarget = profile
+    ? `/?shop=${shop}&host=${host}`
+    : `/onboarding?shop=${shop}&host=${host}`;
+
+  console.log("➡️ Redirect-path vald:", redirectTarget);
 
   // ---- REGISTER CARRIER SERVICE ----
   try {
-    console.log("📡 Registering CarrierService...");
+    console.log("📡 Registrerar CarrierService...");
 
     const register = await fetch(
       `https://${shop}/admin/api/2025-10/carrier_services.json`,
@@ -95,24 +108,23 @@ res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-reval
 
     const result = await register.json();
     console.log("🚚 CarrierService response:", result);
-    console.log("✅ CarrierService response JSON:", JSON.stringify(result, null, 2));
-
-
   } catch (err) {
     console.error("❌ CarrierService registration failed:", err);
   }
-// Ta bort cookien (för framtida installationer)
-res.setHeader(
-  "Set-Cookie",
-  `shopifyTopLevelOAuth=; Path=/; HttpOnly; Secure; SameSite=None; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-);
+
+  // ---- RADERA COOKIE ----
+  res.setHeader(
+    "Set-Cookie",
+    `shopifyTopLevelOAuth=; Path=/; HttpOnly; Secure; SameSite=None; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+  );
 
   // ---- EMBEDDED REDIRECT ----
+  console.log("🔁 Gör embedded redirect med App Bridge");
+
   res.send(`
     <html>
       <head>
         <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-
       </head>
       <body>
         <script>
