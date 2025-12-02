@@ -231,8 +231,13 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
   console.log("➡️ query.host:", host);
 
   if (!shop || !host) {
-    console.warn("❌ Antingen shop eller host saknas");
-    return { notFound: true };
+    console.warn("❌ Antingen shop eller host saknas – redirectar till auth");
+    return {
+      redirect: {
+        destination: `/api/auth`,
+        permanent: false,
+      },
+    };
   }
 
   console.log("🔍 Kollar om shop finns i Supabase:", shop.toLowerCase());

@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // ---- EXCHANGE TEMP CODE FOR ACCESS TOKEN ----
-  console.log("🔄 Byter kod mot access_token...");
+  console.log("🔄 Försöker byta kod mot access_token...");
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -40,24 +40,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   const tokenData = await tokenResponse.json();
-  console.log("🔐 Token data mottaget:", tokenData);
+  console.log("🔐 Token response:", JSON.stringify(tokenData, null, 2));
 
   if (!tokenData.access_token) {
-    console.error("❌ Ingen access_token:", tokenData);
+    console.error("❌ Ingen access_token mottagen:", tokenData);
     return res.status(500).send("Token exchange failed");
   }
 
   const accessToken = tokenData.access_token;
+  console.log("✅ access_token mottagen:", accessToken);
 
   // ✅ Spara token tillfälligt i minnet
   accessTokenStore.set(shop.toString().toLowerCase(), accessToken);
-  console.log("🧠 Token sparad i minne:", {
-    shop: shop.toString().toLowerCase(),
-    token: accessToken,
-  });
+  console.log("🧠 Token sparad i accessTokenStore");
 
   // 📦 Logga för manuell backup
-  console.log("🧾 Kopiera och spara i Supabase manuellt:");
+  console.log("🧾 Kopiera följande till Supabase manuellt:");
   console.log(
     JSON.stringify(
       {
@@ -73,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // ---- CONTINUE WITH CARRIER SERVICE ----
   try {
-    console.log("📡 Registrerar CarrierService...");
+    console.log("📡 Försöker registrera CarrierService...");
 
     const register = await fetch(`https://${shop}/admin/api/2025-10/carrier_services.json`, {
       method: "POST",
@@ -93,10 +91,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const result = await register.json();
     console.log("🚚 CarrierService response:", result);
   } catch (err) {
-    console.error("❌ CarrierService registration failed:", err);
+    console.error("❌ Fel vid CarrierService-registrering:", err);
   }
 
   // ---- CLEAN UP COOKIE ----
+  console.log("🧹 Rensar ShopifyTopLevelOAuth-cookie");
   res.setHeader(
     "Set-Cookie",
     `shopifyTopLevelOAuth=; Path=/; HttpOnly; Secure; SameSite=None; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
@@ -104,8 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // ---- EMBEDDED REDIRECT ----
   const redirectTarget = `/onboarding?shop=${shop}&host=${host}&token=${accessToken}`;
-  console.log("➡️ Redirect-path:", redirectTarget);
-  console.log("🔁 Gör embedded redirect med App Bridge");
+  console.log("➡️ Redirectar till:", redirectTarget);
 
   res.send(`
     <html>
@@ -132,5 +130,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   `);
 }
 
-// Exportera tokenStore för extern åtkomst (om du vill använda det i andra filer)
 export { accessTokenStore };
