@@ -29,9 +29,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // 1️⃣ Koppla användaren till butik i shopify_shops
+    // 1️⃣ Koppla användaren till butik i profiles
     const { error: updateError } = await supabase
-      .from("shopify_shops")
+      .from("profiles")
       .update({ user_id: userId })
       .eq("shop", shop);
 

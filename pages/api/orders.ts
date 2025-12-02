@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 🔑 Hämta access token från Supabase
     const { data: shopData, error: shopError } = await supabase
-      .from("shopify_shops")
+      .from("profiles")
       .select("access_token")
       .eq("shop", shop)
       .single();

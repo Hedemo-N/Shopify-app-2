@@ -238,7 +238,7 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
   console.log("🔍 Kollar om shop finns i Supabase:", shop.toLowerCase());
 
   const { data: existingShop, error } = await supabase
-    .from("shopify_shops")
+    .from("profiles")
     .select("id")
     .eq("shop", shop.toLowerCase())
     .maybeSingle();

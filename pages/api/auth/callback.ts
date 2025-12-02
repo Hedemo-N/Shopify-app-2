@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // ---- SAVE SHOP IN DB ----
   console.log("💾 Sparar shop i supabase...");
-  const { error: upsertError } = await supabase.from("shopify_shops").upsert(
+  const { error: upsertError } = await supabase.from("profiles").upsert(
     {
       shop: shop.toString().toLowerCase(),
       access_token: accessToken,

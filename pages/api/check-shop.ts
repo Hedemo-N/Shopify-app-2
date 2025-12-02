@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const shop = payload.dest.replace("https://", "");
     console.log("🔎 check-shop: decoded shop =", shop);
 
-    // 🔍 Hämta user_id kopplad till butik (från shopify_shops)
+    // 🔍 Hämta user_id kopplad till butik (från profiles)
     const user_id = await lookupUserByShop(shop);
 
     return res.status(200).json({ user_id });
