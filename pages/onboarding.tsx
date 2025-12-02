@@ -62,8 +62,9 @@ function OnboardingPage() {
       });
 
       if (res.ok) {
-        console.log("✅ Onboarding skickad. Redirectar...");
-        router.push(`/?shop=${shop}&host=${host}`);
+        console.log("✅ Onboarding skickad. Redirectar till pending...");
+        // Redirect till "väntar på godkännande"-sida
+        router.push(`/pending-approval?shop=${shop}&host=${host}`);
       } else {
         const errorData = await res.json();
         console.error("API error:", errorData);

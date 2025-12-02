@@ -1,9 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../../frontend/lib/supabaseClient";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
-
-// Token store (OBS: dör vid ny deploy – byt till Redis för prod)
-const accessTokenStore = new Map<string, string>();
+import "@shopify/shopify-api/adapters/node";
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
@@ -26,6 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.warn("⚠️ Saknas query-parametrar");
     return res.status(400).send("Missing query params");
   }
+
+  const shopLower = shop.toString().toLowerCase();
 
   // ---- EXCHANGE TEMP CODE FOR ACCESS TOKEN ----
   console.log("🔄 Försöker byta kod mot access_token...");
@@ -50,26 +50,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const accessToken = tokenData.access_token;
   console.log("✅ access_token mottagen:", accessToken);
 
-  // ✅ Spara token tillfälligt i minnet
-  accessTokenStore.set(shop.toString().toLowerCase(), accessToken);
-  console.log("🧠 Token sparad i accessTokenStore");
+  // ---- CHECK IF SHOP EXISTS IN SUPABASE ----
+  console.log("🔍 Kollar om shop finns i Supabase...");
+  const { data: existingShop, error: lookupError } = await supabase
+    .from("profiles")
+    .select("_id, shop, access_token_shopify")
+    .eq("shop", shopLower)
+    .maybeSingle();
 
-  // 📦 Logga för manuell backup
-  console.log("🧾 Kopiera följande till Supabase manuellt:");
-  console.log(
-    JSON.stringify(
-      {
-        shop: shop.toString().toLowerCase(),
-        access_token: accessToken,
-        user_id: tokenData.associated_user?.id ?? null,
-        installed_at: new Date().toISOString(),
-      },
-      null,
-      2
-    )
-  );
+  if (lookupError) {
+    console.error("❌ Supabase lookup error:", lookupError);
+  }
 
-  // ---- CONTINUE WITH CARRIER SERVICE ----
+  let redirectTarget = "";
+
+  if (existingShop) {
+    // ---- SHOP EXISTS - UPDATE TOKEN AND GO TO DASHBOARD ----
+    console.log("✅ Shop finns redan i Supabase. Uppdaterar token...");
+    
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({
+        access_token_shopify: accessToken,
+        host: host.toString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("shop", shopLower);
+
+    if (updateError) {
+      console.error("❌ Fel vid uppdatering av token:", updateError);
+    } else {
+      console.log("✅ Token uppdaterad i Supabase");
+    }
+
+    redirectTarget = `/?shop=${shop}&host=${host}`;
+    console.log("➡️ Shop finns - redirectar till dashboard");
+
+  } else {
+    // ---- NEW SHOP - GO TO ONBOARDING ----
+    console.log("⚠️ Shop finns INTE i Supabase. Skickar till onboarding...");
+    redirectTarget = `/onboarding?shop=${shop}&host=${host}&token=${accessToken}`;
+    console.log("➡️ Ny shop - redirectar till onboarding med token");
+  }
+
+  // ---- REGISTER CARRIER SERVICE ----
   try {
     console.log("📡 Försöker registrera CarrierService...");
 
@@ -102,7 +126,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   );
 
   // ---- EMBEDDED REDIRECT ----
-  const redirectTarget = `/onboarding?shop=${shop}&host=${host}&token=${accessToken}`;
   console.log("➡️ Redirectar till:", redirectTarget);
 
   res.send(`
@@ -129,5 +152,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     </html>
   `);
 }
-
-export { accessTokenStore };
