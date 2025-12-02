@@ -11,6 +11,7 @@ const shopify = shopifyApi({
   apiVersion: ApiVersion.October25,
   isEmbeddedApp: true,
 });
+// ...samma imports som innan...
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log("🔥 [callback] Endpoint HIT");
@@ -47,44 +48,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const accessToken = tokenData.access_token;
 
-  // ---- SAVE SHOP IN DB ----
-  console.log("💾 Sparar shop i supabase...");
-  const { error: upsertError } = await supabase.from("profiles").upsert(
-    {
-      shop: shop.toString().toLowerCase(),
-      access_token: accessToken,
-      user_id: tokenData.associated_user?.id ?? null,
-      installed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "shop" }
-  );
+  // 🧾 LOGGA UT ACCESS TOKEN SÅ DU KAN SPARA DET SJÄLV
+  console.log("🧾 Kopiera och spara i Supabase manuellt:");
+  console.log(JSON.stringify({
+    shop: shop.toString().toLowerCase(),
+    access_token: accessToken,
+    user_id: tokenData.associated_user?.id ?? null,
+    installed_at: new Date().toISOString(),
+  }, null, 2));
 
-  if (upsertError) {
-    console.error("❌ Supabase upsert error:", upsertError);
-  } else {
-    console.log("✅ Shop sparad:", shop);
-  }
-
-  // ---- CHECK IF PROFILE EXISTS TO DECIDE REDIRECT ----
-  console.log("🔍 Kollar om profile finns...");
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("shop", shop.toString().toLowerCase())
-    .maybeSingle();
-
-  if (profileError) {
-    console.error("❌ Supabase profile error:", profileError);
-  }
-
-  const redirectTarget = profile
-    ? `/?shop=${shop}&host=${host}`
-    : `/onboarding?shop=${shop}&host=${host}`;
-
-  console.log("➡️ Redirect-path vald:", redirectTarget);
-
-  // ---- REGISTER CARRIER SERVICE ----
+  // ---- CONTINUE WITH CARRIER SERVICE ----
   try {
     console.log("📡 Registrerar CarrierService...");
 
@@ -112,13 +85,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("❌ CarrierService registration failed:", err);
   }
 
-  // ---- RADERA COOKIE ----
+  // ---- CLEAN UP COOKIE ----
   res.setHeader(
     "Set-Cookie",
     `shopifyTopLevelOAuth=; Path=/; HttpOnly; Secure; SameSite=None; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
   );
 
   // ---- EMBEDDED REDIRECT ----
+  const redirectTarget = `/?shop=${shop}&host=${host}&token=${accessToken}`;
+  console.log("➡️ Redirect-path:", redirectTarget);
   console.log("🔁 Gör embedded redirect med App Bridge");
 
   res.send(`

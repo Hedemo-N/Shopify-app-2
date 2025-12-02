@@ -10,7 +10,7 @@ function OnboardingPage() {
 
   const [shopReady, setShopReady] = useState(false);
 
-  const { shop, host } = router.query;
+  const { shop, host, token: access_token } = router.query;
 
   useEffect(() => {
     if (shop && host) {
@@ -44,6 +44,7 @@ function OnboardingPage() {
       const payload = {
         shop,
         host,
+        access_token,
         ...form,
       };
 

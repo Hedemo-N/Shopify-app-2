@@ -239,7 +239,7 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
 
   const { data: existingShop, error } = await supabase
     .from("profiles")
-    .select("id")
+    .select("_id")
     .eq("shop", shop.toLowerCase())
     .maybeSingle();
 
