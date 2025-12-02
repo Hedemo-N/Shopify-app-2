@@ -1,4 +1,4 @@
-// pages/settings.tsx
+// pages/index.tsx
 import {
   Page,
   Text,
@@ -12,11 +12,15 @@ import { useState, useCallback, useEffect } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { getSessionToken } from "@shopify/app-bridge-utils";
 import { useRouter } from "next/router";
+import type { GetServerSideProps } from "next";
+import { supabase } from "frontend/lib/supabaseClient"; // eller rätt sökväg
 
-export default function SettingsPage() {
+
+export default function SettingsPage({ shop }: { shop: string }) {
+
   const router = useRouter();
   const app = useAppBridge();
-  const { shop } = router.query;
+
 
   const [loading, setLoading] = useState(true);
 
@@ -217,3 +221,31 @@ export default function SettingsPage() {
     </Page>
   );
 }
+// SSR: kontrollera att shoppen finns
+export const getServerSideProps: GetServerSideProps = async ({ query }) => {
+  const shop = typeof query.shop === "string" ? query.shop : null;
+  const host = typeof query.host === "string" ? query.host : null;
+
+  if (!shop || !host) {
+    return { notFound: true };
+  }
+
+  const { data: existingShop, error } = await supabase
+    .from("shopify_shops")
+    .select("id")
+    .eq("shop", shop.toLowerCase())
+    .maybeSingle();
+
+  if (error || !existingShop) {
+    return {
+      redirect: {
+        destination: `/onboarding?shop=${encodeURIComponent(shop)}&host=${encodeURIComponent(host)}`,
+        permanent: false,
+      },
+    };
+  }
+
+  return {
+    props: { shop },
+  };
+};
