@@ -10,7 +10,9 @@ function OnboardingPage() {
 
   const [shopReady, setShopReady] = useState(false);
 
-  const { shop, host, token: access_token } = router.query;
+  const shop = typeof router.query.shop === "string" ? router.query.shop : "";
+const host = typeof router.query.host === "string" ? router.query.host : "";
+const access_token = typeof router.query.token === "string" ? router.query.token : "";
 
   useEffect(() => {
     if (shop && host) {
