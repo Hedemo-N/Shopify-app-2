@@ -94,10 +94,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const result = await register.json();
     console.log("🚚 CarrierService response:", result);
+    console.log("✅ CarrierService response JSON:", JSON.stringify(result, null, 2));
+
 
   } catch (err) {
     console.error("❌ CarrierService registration failed:", err);
   }
+// Ta bort cookien (för framtida installationer)
+res.setHeader(
+  "Set-Cookie",
+  `shopifyTopLevelOAuth=; Path=/; HttpOnly; Secure; SameSite=None; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+);
 
   // ---- EMBEDDED REDIRECT ----
   res.send(`
