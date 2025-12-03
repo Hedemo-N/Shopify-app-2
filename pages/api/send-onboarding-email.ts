@@ -1,3 +1,4 @@
+// pages/api/send-onboarding-email.ts
 import "@shopify/shopify-api/adapters/node"; // ADD THIS LINE
 import { NextApiRequest, NextApiResponse } from "next";
 import { Resend } from "resend";
