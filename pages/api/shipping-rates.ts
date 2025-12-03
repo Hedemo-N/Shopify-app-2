@@ -165,7 +165,7 @@ export default async function handler(
     // 2. Din ORÖRDA Supabase-datahämtning
     // -----------------------------------------------------
     const { data: shop } = await supabase
-      .from("shopify_shops")
+      .from("profiles")
       .select(
         "pris_ombud, pris_hemkvall, pris_hem2h, number_box, cutoff_time_evening, cutoff_time_ombud"
       )

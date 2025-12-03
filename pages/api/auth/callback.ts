@@ -44,16 +44,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const accessToken = tokenData.access_token;
 
   // ---- SAVE SHOP IN DB ----
-  await supabase.from("shopify_shops").upsert(
-    {
-      shop: shop.toString().toLowerCase(),
-      access_token: accessToken,
-      user_id: tokenData.associated_user?.id ?? null,
-      installed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "shop" }
-  );
+  await supabase.from("shopify_sessions").upsert(
+  {
+    shop: shop.toString().toLowerCase(),
+    host: host.toString(),
+    access_token: accessToken,
+    installed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  { onConflict: "shop" } // ✅ korrekt: sträng
+);
+
 
   console.log("💾 Saved shop:", shop);
 
