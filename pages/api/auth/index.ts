@@ -1,37 +1,65 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import crypto from "crypto";
+// Behåll HELA din SettingsPage komponent precis som den är
+// Ändra BARA getServerSideProps:
+import type { GetServerSideProps } from "next";
 import { supabase } from "frontend/lib/supabaseClient";
-export const config = {
-  api: { bodyParser: true },
-};
+export const getServerSideProps: GetServerSideProps = async ({ query }) => {
+  const shop = typeof query.shop === "string" ? query.shop : null;
+  const host = typeof query.host === "string" ? query.host : null;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
-    return res.status(405).send("Method not allowed");
+  console.log("🟡 getServerSideProps körs");
+  console.log("➡️ query.shop:", shop);
+  console.log("➡️ query.host:", host);
+
+  // Om BÅDA saknas - låt klienten hantera det (första render från Shopify)
+  if (!shop && !host) {
+    console.warn("⚠️ Initial load utan params - skickar till auth");
+    return {
+      redirect: {
+        destination: `/api/auth`,
+        permanent: false,
+      },
+    };
   }
 
-  const shop = req.query.shop as string;
-  const host = req.query.host as string;
-
+  // Om bara EN saknas
   if (!shop || !host) {
-    return res.status(400).send("Missing shop or host");
+    console.warn("❌ Antingen shop eller host saknas");
+    const params = new URLSearchParams();
+    if (shop) params.append("shop", shop);
+    if (host) params.append("host", host);
+    
+    return {
+      redirect: {
+        destination: `/api/auth?${params.toString()}`,
+        permanent: false,
+      },
+    };
   }
 
-// Kontrollera Supabase istället för cookie
-const { data: existingShop } = await supabase
-  .from("profiles")
-  .select("_id")
-  .eq("shop", shop)
-  .maybeSingle();
+  console.log("🔍 Kollar om shop finns i Supabase:", shop.toLowerCase());
 
-if (!existingShop) {
-  // Om det är en ny shop, kör toplevel för första gången
-  return res.redirect(`/api/auth/toplevel?shop=${shop}&host=${host}`);
-}
+  const { data: existingShop, error } = await supabase
+    .from("profiles")
+    .select("_id")
+    .eq("shop", shop.toLowerCase())
+    .maybeSingle();
 
+  if (error) {
+    console.error("❌ Fel från Supabase:", error);
+  }
 
-  const state = crypto.randomBytes(16).toString("hex");
-  const redirectUri = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_API_KEY}&scope=${process.env.SHOPIFY_SCOPES}&redirect_uri=${process.env.SHOPIFY_APP_URL}/api/auth/callback&state=${state}`;
+  if (!existingShop) {
+    console.warn("⚠️ Shop finns inte i Supabase. Skickar till onboarding...");
+    return {
+      redirect: {
+        destination: `/onboarding?shop=${encodeURIComponent(shop)}&host=${encodeURIComponent(host)}`,
+        permanent: false,
+      },
+    };
+  }
 
-  return res.redirect(redirectUri);
-}
+  console.log("✅ Shop finns i Supabase. Laddar admin...");
+  return {
+    props: { shop },
+  };
+};
