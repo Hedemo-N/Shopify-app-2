@@ -1,4 +1,4 @@
-import "@shopify/shopify-api/adapters/node";
+import "@shopify/shopify-api/adapters/node"; // ADD THIS LINE
 import { NextApiRequest, NextApiResponse } from "next";
 import { Resend } from "resend";
 
@@ -10,9 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { shop, host, company, contact, email, phone, access_token } = req.body;
-
-    console.log("📬 E-post skickas med token:", access_token);
+    const { shop, host, company, contact, email, phone } = req.body;
 
     await resend.emails.send({
       from: "Blixt Onboarding <no-reply@blixtdelivery.se>",
@@ -22,7 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         <h2>Ny Shopify Onboarding</h2>
         <p><b>Shop:</b> ${shop}</p>
         <p><b>Host:</b> ${host}</p>
-        <p><b>Access Token:</b> ${access_token || "❌ Saknas"}</p>
         <p><b>Företag:</b> ${company}</p>
         <p><b>Kontaktperson:</b> ${contact}</p>
         <p><b>Email:</b> ${email}</p>

@@ -1,4 +1,4 @@
-// pages/index.tsx
+// pages/settings.tsx
 import {
   Page,
   Text,
@@ -12,23 +12,13 @@ import { useState, useCallback, useEffect } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { getSessionToken } from "@shopify/app-bridge-utils";
 import { useRouter } from "next/router";
-import type { GetServerSideProps } from "next";
-import { supabase } from "frontend/lib/supabaseClient";
 
-export default function SettingsPage({ shop }: { shop: string | null }) {
+export default function SettingsPage() {
   const router = useRouter();
   const app = useAppBridge();
-  const [loading, setLoading] = useState(true);
+  const { shop } = router.query;
 
-  // ➤ Error handling om shop saknas
-  if (!shop) {
-    return (
-      <div style={{ padding: 40, textAlign: "center" }}>
-        <h2>⚠️ Invalid Access</h2>
-        <p>This app must be accessed through the Shopify Admin.</p>
-      </div>
-    );
-  }
+  const [loading, setLoading] = useState(true);
 
   // ➤ Ny form med separata öppettider-fält
   const [form, setForm] = useState({
@@ -111,7 +101,7 @@ export default function SettingsPage({ shop }: { shop: string | null }) {
     };
 
     load();
-  }, [router.isReady, app, shop]);
+  }, [router.isReady, app]);
 
   const handleChange = (field: string) => (value: any) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -134,7 +124,7 @@ export default function SettingsPage({ shop }: { shop: string | null }) {
     } else {
       alert("Något gick fel. Försök igen.");
     }
-  }, [form, shop, app]);
+  }, [form]);
 
   if (loading) return <p style={{ padding: 30 }}>Laddar inställningar...</p>;
 
@@ -151,6 +141,7 @@ export default function SettingsPage({ shop }: { shop: string | null }) {
         }}
       >
         <BlockStack gap="400">
+
           {/* CHECKBOX GROUP */}
           <BlockStack gap="200">
             <Checkbox
@@ -173,127 +164,42 @@ export default function SettingsPage({ shop }: { shop: string | null }) {
           <Divider />
 
           {/* OMBUD */}
-          <Text variant="headingLg" as="h2">
-            Ombud / Paketbox
-          </Text>
-          <TextField
-            label="Pris"
-            autoComplete="off"
-            value={form.pris_ombud}
-            onChange={handleChange("pris_ombud")}
-          />
-          <TextField
-            label="Antal ombud"
-            autoComplete="off"
-            value={form.number_box}
-            onChange={handleChange("number_box")}
-          />
-          <TextField
-            label="Cutoff-tid"
-            autoComplete="off"
-            value={form.cutoff_time_ombud}
-            onChange={handleChange("cutoff_time_ombud")}
-          />
+          <Text variant="headingLg" as="h2">Ombud / Paketbox</Text>
+          <TextField label="Pris" autoComplete="off" value={form.pris_ombud} onChange={handleChange("pris_ombud")} />
+          <TextField label="Antal ombud" autoComplete="off" value={form.number_box} onChange={handleChange("number_box")} />
+          <TextField label="Cutoff-tid" autoComplete="off" value={form.cutoff_time_ombud} onChange={handleChange("cutoff_time_ombud")} />
 
           <Divider />
 
           {/* EXPRESS */}
-          <Text variant="headingLg" as="h2">
-            Hemleverans Express 2h
-          </Text>
-          <TextField
-            label="Pris"
-            autoComplete="off"
-            value={form.pris_hem2h}
-            onChange={handleChange("pris_hem2h")}
-          />
+          <Text variant="headingLg" as="h2">Hemleverans Express 2h</Text>
+          <TextField label="Pris" autoComplete="off" value={form.pris_hem2h} onChange={handleChange("pris_hem2h")} />
 
           <Divider />
 
           {/* EVENING */}
-          <Text variant="headingLg" as="h2">
-            Hemleverans Kväll 17–22
-          </Text>
-          <TextField
-            label="Pris"
-            autoComplete="off"
-            value={form.pris_hemkvall}
-            onChange={handleChange("pris_hemkvall")}
-          />
-          <TextField
-            label="Cutoff-tid"
-            autoComplete="off"
-            value={form.cutoff_time_evening}
-            onChange={handleChange("cutoff_time_evening")}
-          />
+          <Text variant="headingLg" as="h2">Hemleverans Kväll 17–22</Text>
+          <TextField label="Pris" autoComplete="off" value={form.pris_hemkvall} onChange={handleChange("pris_hemkvall")} />
+          <TextField label="Cutoff-tid" autoComplete="off" value={form.cutoff_time_evening} onChange={handleChange("cutoff_time_evening")} />
 
           <Divider />
 
           {/* STORE INFO */}
-          <Text variant="headingLg" as="h2">
-            Butiksinformation
-          </Text>
-          <TextField
-            label="E-post"
-            autoComplete="off"
-            value={form.Butiksemail}
-            onChange={handleChange("Butiksemail")}
-          />
-          <TextField
-            label="Telefonnummer"
-            autoComplete="off"
-            value={form.Butikstelefon}
-            onChange={handleChange("Butikstelefon")}
-          />
+          <Text variant="headingLg" as="h2">Butiksinformation</Text>
+          <TextField label="E-post" autoComplete="off" value={form.Butiksemail} onChange={handleChange("Butiksemail")} />
+          <TextField label="Telefonnummer" autoComplete="off" value={form.Butikstelefon} onChange={handleChange("Butikstelefon")} />
 
           <Divider />
 
           {/* OPENING HOURS */}
-          <Text variant="headingLg" as="h2">
-            Öppettider
-          </Text>
-          <TextField
-            label="Måndag (t.ex. 10:00 - 18:00)"
-            autoComplete="off"
-            value={form.monday}
-            onChange={handleChange("monday")}
-          />
-          <TextField
-            label="Tisdag"
-            autoComplete="off"
-            value={form.tuesday}
-            onChange={handleChange("tuesday")}
-          />
-          <TextField
-            label="Onsdag"
-            autoComplete="off"
-            value={form.wednesday}
-            onChange={handleChange("wednesday")}
-          />
-          <TextField
-            label="Torsdag"
-            autoComplete="off"
-            value={form.thursday}
-            onChange={handleChange("thursday")}
-          />
-          <TextField
-            label="Fredag"
-            autoComplete="off"
-            value={form.friday}
-            onChange={handleChange("friday")}
-          />
-          <TextField
-            label="Lördag"
-            autoComplete="off"
-            value={form.saturday}
-            onChange={handleChange("saturday")}
-          />
-          <TextField
-            label="Söndag"
-            autoComplete="off"
-            value={form.sunday}
-            onChange={handleChange("sunday")}
-          />
+          <Text variant="headingLg" as="h2">Öppettider</Text>
+          <TextField label="Måndag (t.ex. 10:00 - 18:00)" autoComplete="off" value={form.monday} onChange={handleChange("monday")} />
+          <TextField label="Tisdag" autoComplete="off" value={form.tuesday} onChange={handleChange("tuesday")} />
+          <TextField label="Onsdag" autoComplete="off" value={form.wednesday} onChange={handleChange("wednesday")} />
+          <TextField label="Torsdag" autoComplete="off" value={form.thursday} onChange={handleChange("thursday")} />
+          <TextField label="Fredag" autoComplete="off" value={form.friday} onChange={handleChange("friday")} />
+          <TextField label="Lördag" autoComplete="off" value={form.saturday} onChange={handleChange("saturday")} />
+          <TextField label="Söndag" autoComplete="off" value={form.sunday} onChange={handleChange("sunday")} />
 
           <Divider />
 
@@ -304,76 +210,10 @@ export default function SettingsPage({ shop }: { shop: string | null }) {
             onChange={handleChange("Butiksadress")}
           />
 
-          <Button variant="primary" onClick={handleSave}>
-            Spara inställningar
-          </Button>
+          <Button variant="primary" onClick={handleSave}>Spara inställningar</Button>
+
         </BlockStack>
       </div>
     </Page>
   );
 }
-
-// SSR: kontrollera att shoppen finns
-export const getServerSideProps: GetServerSideProps = async ({ query }) => {
-  const shop = typeof query.shop === "string" ? query.shop : null;
-  const host = typeof query.host === "string" ? query.host : null;
-
-  console.log("🟡 getServerSideProps körs");
-  console.log("➡️ query.shop:", shop);
-  console.log("➡️ query.host:", host);
-
-  // OM BÅDA SAKNAS - returnera null shop för error handling
-  if (!shop && !host) {
-    console.warn("⚠️ Både shop och host saknas");
-    return {
-      props: { shop: null },
-    };
-  }
-
-  // Om bara en saknas, redirecta till auth med tillgängliga params
-  if (!shop || !host) {
-    console.warn("❌ Antingen shop eller host saknas – redirectar till auth");
-    const queryString = [
-      shop ? `shop=${shop}` : "",
-      host ? `host=${host}` : "",
-    ]
-      .filter(Boolean)
-      .join("&");
-
-    return {
-      redirect: {
-        destination: `/api/auth${queryString ? `?${queryString}` : ""}`,
-        permanent: false,
-      },
-    };
-  }
-
-  console.log("🔍 Kollar om shop finns i Supabase:", shop.toLowerCase());
-
-  const { data: existingShop, error } = await supabase
-    .from("profiles")
-    .select("_id")
-    .eq("shop", shop.toLowerCase())
-    .maybeSingle();
-
-  if (error) {
-    console.error("❌ Fel från Supabase:", error);
-  }
-
-  if (!existingShop) {
-    console.warn("⚠️ Shop finns inte i Supabase. Skickar till onboarding...");
-    return {
-      redirect: {
-        destination: `/onboarding?shop=${encodeURIComponent(
-          shop
-        )}&host=${encodeURIComponent(host)}`,
-        permanent: false,
-      },
-    };
-  }
-
-  console.log("✅ Shop finns i Supabase. Laddar admin...");
-  return {
-    props: { shop },
-  };
-};

@@ -129,8 +129,6 @@ export default async function handler(
 
   console.log("🔥 shipping-rates.ts HIT");
 
-res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-
   // -----------------------------------------------------
   // 1. Läs RAW BODY (ENDA ändringen vi gör)
   // -----------------------------------------------------
@@ -167,7 +165,7 @@ res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-reval
     // 2. Din ORÖRDA Supabase-datahämtning
     // -----------------------------------------------------
     const { data: shop } = await supabase
-      .from("profiles")
+      .from("shopify_shops")
       .select(
         "pris_ombud, pris_hemkvall, pris_hem2h, number_box, cutoff_time_evening, cutoff_time_ombud"
       )

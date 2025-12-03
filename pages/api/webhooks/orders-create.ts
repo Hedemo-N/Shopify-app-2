@@ -134,7 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ---- Hämta butik från shopify_shops ----
     const { data: shopRow, error: shopError } = await supabase
-      .from("profiles")
+      .from("shopify_shops")
       .select("id, user_id, butiksemail")
       .eq("shop", shopDomain)
       .single();

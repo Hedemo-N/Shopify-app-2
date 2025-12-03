@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+// pages/onboarding.tsx
+import { useState } from "react";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { getSessionToken } from "@shopify/app-bridge-utils";
@@ -6,21 +7,9 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 
 function OnboardingPage() {
   const router = useRouter();
+  const { shop, host } = router.query;
+
   const app = useAppBridge();
-
-  const [shopReady, setShopReady] = useState(false);
-
-  const { shop, host, token } = router.query;
-
-  const [accessToken, setAccessToken] = useState("");
-
-  useEffect(() => {
-    if (shop && host && token) {
-      setAccessToken(token as string);
-      setShopReady(true);
-      console.log("✅ token mottaget i onboarding:", token);
-    }
-  }, [shop, host, token]);
 
   const [form, setForm] = useState({
     company: "",
@@ -37,18 +26,12 @@ function OnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!shop || !host || !accessToken) {
-      alert("shop, host eller access_token saknas – kan inte skicka formulär");
-      return;
-    }
-
     try {
-      const sessionToken = await getSessionToken(app);
+      const token = await getSessionToken(app);
 
       const payload = {
         shop,
         host,
-        access_token: accessToken,
         ...form,
       };
 
@@ -56,15 +39,13 @@ function OnboardingPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
 
       if (res.ok) {
-        console.log("✅ Onboarding skickad. Redirectar till pending...");
-        // Redirect till "väntar på godkännande"-sida
-        router.push(`/pending-approval?shop=${shop}&host=${host}`);
+        router.push(`/?shop=${shop}&host=${host}`);
       } else {
         const errorData = await res.json();
         console.error("API error:", errorData);
@@ -75,10 +56,6 @@ function OnboardingPage() {
       alert("Kunde inte skicka formuläret. Kontakta support 🙏");
     }
   };
-
-  if (!shopReady) {
-    return <p style={{ padding: 20 }}>🔄 Väntar på att shop, host & token ska laddas...</p>;
-  }
 
   return (
     <div style={{ padding: 30, maxWidth: 500, margin: "auto" }}>
@@ -96,6 +73,7 @@ function OnboardingPage() {
             onChange={handleChange}
             required
           />
+
           <input
             id="contact"
             placeholder="Kontaktperson"
@@ -103,6 +81,7 @@ function OnboardingPage() {
             onChange={handleChange}
             required
           />
+
           <input
             id="email"
             placeholder="E-post"
@@ -111,6 +90,7 @@ function OnboardingPage() {
             onChange={handleChange}
             required
           />
+
           <input
             id="phone"
             placeholder="Telefonnummer"
@@ -118,6 +98,7 @@ function OnboardingPage() {
             onChange={handleChange}
             required
           />
+
           <button
             type="submit"
             style={{

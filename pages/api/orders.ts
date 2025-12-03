@@ -25,8 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 🔑 Hämta access token från Supabase
     const { data: shopData, error: shopError } = await supabase
-      .from("profiles")
-      .select("access_token_shopify")
+      .from("shopify_shops")
+      .select("access_token")
       .eq("shop", shop)
       .single();
 
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "No token found for shop" });
     }
 
-    const token = shopData.access_token_shopify;
+    const token = shopData.access_token;
 
     // 🔗 Shopify Orders API
     const response = await fetch(
