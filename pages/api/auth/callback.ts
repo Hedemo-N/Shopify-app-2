@@ -1,10 +1,9 @@
 // pages/api/auth/callback.ts
-
+import "@shopify/shopify-api/adapters/node"; // LÄGG TILL DENNA!
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../../frontend/lib/supabaseClient";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 
-// Shopify client
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
   apiSecretKey: process.env.SHOPIFY_API_SECRET!,
@@ -42,32 +41,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const accessToken = tokenData.access_token;
+  console.log("✅ Got access_token");
 
-  // ---- SAVE SHOP IN DB ----
-  await supabase.from("shopify_sessions").upsert(
-  {
-    shop: shop.toString().toLowerCase(),
-    host: host.toString(),
-    access_token: accessToken,
-    installed_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  { onConflict: "shop" } // ✅ korrekt: sträng
-);
+  // ---- SAVE TO shopify_sessions ----
+  console.log("💾 Saving to shopify_sessions...");
+  const { data: sessionData, error: sessionError } = await supabase
+    .from("shopify_sessions")
+    .upsert(
+      {
+        shop: shop.toString().toLowerCase(),
+        host: host.toString(),
+        access_token: accessToken,
+        installed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "shop" }
+    )
+    .select();
 
+  if (sessionError) {
+    console.error("❌ Supabase shopify_sessions error:", sessionError);
+  } else {
+    console.log("✅ Saved to shopify_sessions:", sessionData);
+  }
 
-  console.log("💾 Saved shop:", shop);
-
-  // ---- CHECK IF PROFILE EXISTS TO DECIDE REDIRECT ----
-  const { data: profile } = await supabase
+  // ---- CHECK IF PROFILE EXISTS ----
+  console.log("🔍 Checking if profile exists...");
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id")
+    .select("_id")
     .eq("shop", shop.toString().toLowerCase())
     .maybeSingle();
 
+  if (profileError) {
+    console.error("❌ Profile lookup error:", profileError);
+  }
+
   const redirectTarget = profile
-    ? `/?shop=${shop}&host=${host}`         // ADMIN
-    : `/onboarding?shop=${shop}&host=${host}`; // FIRST TIME
+    ? `/?shop=${shop}&host=${host}`
+    : `/onboarding?shop=${shop}&host=${host}`;
 
   console.log("➡️ Redirecting to:", redirectTarget);
 
@@ -95,7 +107,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const result = await register.json();
     console.log("🚚 CarrierService response:", result);
-
   } catch (err) {
     console.error("❌ CarrierService registration failed:", err);
   }
@@ -105,7 +116,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     <html>
       <head>
         <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-
       </head>
       <body>
         <script>

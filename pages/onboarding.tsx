@@ -8,8 +8,9 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 function OnboardingPage() {
   const router = useRouter();
   const { shop, host } = router.query;
-
   const app = useAppBridge();
+
+  const [submitting, setSubmitting] = useState(false); // NY STATE
 
   const [form, setForm] = useState({
     company: "",
@@ -26,6 +27,9 @@ function OnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (submitting) return; // Förhindra dubbla submits
+    setSubmitting(true);
+
     try {
       const token = await getSessionToken(app);
 
@@ -34,6 +38,8 @@ function OnboardingPage() {
         host,
         ...form,
       };
+
+      console.log("📤 Skickar onboarding email...");
 
       const res = await fetch("/api/send-onboarding-email", {
         method: "POST",
@@ -45,15 +51,20 @@ function OnboardingPage() {
       });
 
       if (res.ok) {
-        router.push(`/?shop=${shop}&host=${host}`);
+        console.log("✅ Email skickad! Redirectar...");
+        // Ge lite tid innan redirect så state hinner uppdateras
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        router.push(`/pending-approval?shop=${shop}&host=${host}`);
       } else {
         const errorData = await res.json();
         console.error("API error:", errorData);
-        alert(`Något gick fel: ${errorData.error || 'Okänt fel'}`);
+        alert(`Något gick fel: ${errorData.error || "Okänt fel"}`);
+        setSubmitting(false);
       }
     } catch (error) {
       console.error("Submit error:", error);
       alert("Kunde inte skicka formuläret. Kontakta support 🙏");
+      setSubmitting(false);
     }
   };
 
@@ -72,16 +83,16 @@ function OnboardingPage() {
             value={form.company}
             onChange={handleChange}
             required
+            disabled={submitting}
           />
-
           <input
             id="contact"
             placeholder="Kontaktperson"
             value={form.contact}
             onChange={handleChange}
             required
+            disabled={submitting}
           />
-
           <input
             id="email"
             placeholder="E-post"
@@ -89,30 +100,31 @@ function OnboardingPage() {
             value={form.email}
             onChange={handleChange}
             required
+            disabled={submitting}
           />
-
           <input
             id="phone"
             placeholder="Telefonnummer"
             value={form.phone}
             onChange={handleChange}
             required
+            disabled={submitting}
           />
-
           <button
             type="submit"
+            disabled={submitting}
             style={{
               marginTop: 16,
               padding: "10px 16px",
-              background: "#0c80ff",
+              background: submitting ? "#ccc" : "#0c80ff",
               color: "white",
               border: "none",
-              cursor: "pointer",
+              cursor: submitting ? "not-allowed" : "pointer",
               borderRadius: 6,
               fontSize: 16,
             }}
           >
-            Skicka
+            {submitting ? "Skickar..." : "Skicka"}
           </button>
         </div>
       </form>
