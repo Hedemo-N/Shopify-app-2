@@ -12,37 +12,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const shop = req.query.shop as string;
   const host = req.query.host as string;
+  const embedded = req.query.embedded as string;
 
-  console.log("🔍 /api/auth called with:", { shop, host });
-  console.log("🍪 Cookies:", req.cookies);
+  console.log("🔍 /api/auth called");
+  console.log("📥 Query:", { shop, host, embedded });
 
   if (!shop) {
     console.warn("❌ Missing shop");
-    return res.status(400).send("Missing shop parameter");
+    return res.status(400).send(`
+      <html>
+        <body style="font-family: Arial; padding: 40px; text-align: center;">
+          <h2>Error: Missing shop parameter</h2>
+          <p>This app must be accessed through Shopify Admin.</p>
+        </body>
+      </html>
+    `);
   }
 
-  if (!host) {
-    console.warn("❌ Missing host");
-    return res.status(400).send("Missing host parameter");
+  // För embedded apps utan host - använd toplevel
+  if (embedded === "1" && !host) {
+    console.log("📱 Embedded app without host - using toplevel");
+    return res.redirect(`/api/auth/toplevel?shop=${shop}`);
   }
 
-  // Kolla om cookie finns
-  const hasCookie = req.cookies["shopifyTopLevelOAuth"] === "1";
-  console.log("🍪 Has cookie?", hasCookie);
-
-  if (!hasCookie) {
-    console.log("➡️ No cookie - redirecting to toplevel");
-    return res.redirect(`/api/auth/toplevel?shop=${shop}&host=${host}`);
-  }
-
-  // Cookie finns - starta OAuth
-  console.log("✅ Cookie found - starting OAuth");
+  // Starta OAuth direkt
+  console.log("✅ Starting OAuth flow");
   const state = crypto.randomBytes(16).toString("hex");
-  const oauthUrl = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_API_KEY}&scope=${process.env.SHOPIFY_SCOPES}&redirect_uri=${encodeURIComponent(
+  const oauthUrl = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_API_KEY}&scope=${encodeURIComponent(process.env.SHOPIFY_SCOPES!)}&redirect_uri=${encodeURIComponent(
     `${process.env.SHOPIFY_APP_URL}/api/auth/callback`
-  )}&state=${state}`;
+  )}&state=${state}${host ? `&host=${host}` : ""}`;
 
-  console.log("🔐 OAuth URL:", oauthUrl);
+  console.log("🔐 Redirecting to OAuth:", oauthUrl);
 
   return res.redirect(oauthUrl);
 }

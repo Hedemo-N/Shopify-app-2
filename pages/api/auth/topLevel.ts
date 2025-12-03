@@ -1,23 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { shop, host } = req.query;
+  const shop = req.query.shop as string;
+  const host = req.query.host as string;
 
   console.log("🔥 /api/auth/toplevel HIT");
   console.log("📥 Query:", { shop, host });
 
-  if (!shop || !host) {
-    console.warn("❌ Missing params");
-    return res.status(400).send("Missing shop or host");
+  if (!shop) {
+    console.warn("❌ Missing shop");
+    return res.status(400).send("Missing shop parameter");
   }
-
-  // Sätt cookie med korrekt syntax
-  res.setHeader(
-    "Set-Cookie",
-    "shopifyTopLevelOAuth=1; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=60"
-  );
-
-  console.log("🍪 Cookie set for", shop);
 
   res.setHeader("Content-Type", "text/html");
   res.send(`
@@ -27,24 +20,34 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
       </head>
       <body>
-        <p>Setting up authentication...</p>
+        <p>Redirecting to authentication...</p>
         <script>
-          console.log("🔄 Toplevel OAuth redirect starting...");
+          console.log("🔄 Toplevel OAuth redirect");
           
-          const AppBridge = window['app-bridge'];
-          const Redirect = AppBridge.actions.Redirect;
+          // Hämta host från URL om den inte finns i query
+          const urlParams = new URLSearchParams(window.location.search);
+          const hostParam = urlParams.get("host") || "${host || ''}";
+          const shopParam = "${shop}";
 
-          const app = AppBridge.createApp({
-            apiKey: "${process.env.SHOPIFY_API_KEY}",
-            host: "${host}",
-          });
+          if (!hostParam) {
+            console.warn("⚠️ No host found, redirecting to parent");
+            window.top.location.href = "https://" + shopParam + "/admin/apps";
+          } else {
+            const AppBridge = window['app-bridge'];
+            const Redirect = AppBridge.actions.Redirect;
 
-          console.log("📡 Redirecting to /api/auth with cookie set");
+            const app = AppBridge.createApp({
+              apiKey: "${process.env.SHOPIFY_API_KEY}",
+              host: hostParam,
+            });
 
-          Redirect.create(app).dispatch(
-            Redirect.Action.REMOTE,
-            "${process.env.SHOPIFY_APP_URL}/api/auth?shop=${shop}&host=${host}"
-          );
+            console.log("📡 Redirecting to /api/auth");
+
+            Redirect.create(app).dispatch(
+              Redirect.Action.REMOTE,
+              "${process.env.SHOPIFY_APP_URL}/api/auth?shop=" + shopParam + "&host=" + hostParam
+            );
+          }
         </script>
       </body>
     </html>
