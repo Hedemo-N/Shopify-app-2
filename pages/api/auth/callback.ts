@@ -1,5 +1,4 @@
-// pages/api/auth/callback.ts
-import "@shopify/shopify-api/adapters/node"; // LÄGG TILL DENNA!
+import "@shopify/shopify-api/adapters/node";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../../frontend/lib/supabaseClient";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
@@ -14,15 +13,21 @@ const shopify = shopifyApi({
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  console.log("🔥 /api/auth/callback HIT");
+  console.log("🔥🔥🔥 CALLBACK ENDPOINT HIT 🔥🔥🔥");
+  console.log("📥 Full query:", req.query);
+  console.log("📥 Full URL:", req.url);
 
   const { shop, code, host } = req.query;
 
   if (!shop || !code || !host) {
+    console.error("❌ Missing params:", { shop: !!shop, code: !!code, host: !!host });
     return res.status(400).send("Missing query params");
   }
 
+  console.log("✅ All params present");
+
   // ---- EXCHANGE TEMP CODE FOR ACCESS TOKEN ----
+  console.log("🔄 Exchanging code for access_token...");
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -34,48 +39,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   const tokenData = await tokenResponse.json();
+  console.log("🔐 Token response status:", tokenResponse.status);
 
   if (!tokenData.access_token) {
-    console.error("❌ Missing access_token:", tokenData);
+    console.error("❌ No access_token in response:", tokenData);
     return res.status(500).send("Token exchange failed");
   }
 
   const accessToken = tokenData.access_token;
-  console.log("✅ Got access_token");
+  console.log("✅ Got access_token:", accessToken.substring(0, 10) + "...");
 
   // ---- SAVE TO shopify_sessions ----
-  console.log("💾 Saving to shopify_sessions...");
+  console.log("💾 Attempting to save to shopify_sessions...");
+  
+  const dataToInsert = {
+    shop: shop.toString().toLowerCase(),
+    host: host.toString(),
+    access_token: accessToken,
+    session: JSON.stringify({ shop, host, accessToken }), // Lägg till session field
+  };
+
+  console.log("📦 Data to insert:", {
+    shop: dataToInsert.shop,
+    host: dataToInsert.host,
+    access_token: dataToInsert.access_token.substring(0, 10) + "...",
+  });
+
   const { data: sessionData, error: sessionError } = await supabase
     .from("shopify_sessions")
-    .upsert(
-      {
-        shop: shop.toString().toLowerCase(),
-        host: host.toString(),
-        access_token: accessToken,
-        installed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "shop" }
-    )
+    .upsert(dataToInsert, { onConflict: "shop" })
     .select();
 
   if (sessionError) {
-    console.error("❌ Supabase shopify_sessions error:", sessionError);
+    console.error("❌❌❌ SUPABASE ERROR:", sessionError);
+    console.error("Error details:", JSON.stringify(sessionError, null, 2));
   } else {
-    console.log("✅ Saved to shopify_sessions:", sessionData);
+    console.log("✅✅✅ SAVED TO SUPABASE:", sessionData);
   }
 
   // ---- CHECK IF PROFILE EXISTS ----
   console.log("🔍 Checking if profile exists...");
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile } = await supabase
     .from("profiles")
     .select("_id")
     .eq("shop", shop.toString().toLowerCase())
     .maybeSingle();
-
-  if (profileError) {
-    console.error("❌ Profile lookup error:", profileError);
-  }
 
   const redirectTarget = profile
     ? `/?shop=${shop}&host=${host}`
@@ -86,7 +94,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // ---- REGISTER CARRIER SERVICE ----
   try {
     console.log("📡 Registering CarrierService...");
-
     const register = await fetch(
       `https://${shop}/admin/api/2025-10/carrier_services.json`,
       {
@@ -108,7 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const result = await register.json();
     console.log("🚚 CarrierService response:", result);
   } catch (err) {
-    console.error("❌ CarrierService registration failed:", err);
+    console.error("❌ CarrierService error:", err);
   }
 
   // ---- EMBEDDED REDIRECT ----
@@ -119,6 +126,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       </head>
       <body>
         <script>
+          console.log("🔄 Callback redirect executing...");
           const AppBridge = window['app-bridge'];
           const Redirect = AppBridge.actions.Redirect;
 
