@@ -161,6 +161,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log("➡️ Redirecting to:", redirectTarget);
 
   // ---- REGISTER CARRIER SERVICE ----
+  // ---- REGISTER CARRIER SERVICE ----
   try {
     console.log("📡 Registering CarrierService...");
     const register = await fetch(
@@ -187,27 +188,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("❌ CarrierService error:", err);
   }
 
-// ---- REDIRECT EFTER OAUTH ----
-const shopName = shop.toString().replace('.myshopify.com', '');
+  // ---- REDIRECT EFTER OAUTH ----
+  const redirectUrl = `${process.env.SHOPIFY_APP_URL}${redirectTarget}`;
+  console.log("➡️ Final redirect to:", redirectUrl);
 
-res.send(`
-  <!DOCTYPE html>
-  <html>
-    <head></head>
-    <body>
-      <p>Installation klar! Omdirigerar...</p>
-      <script>
-        // Stäng popup och öppna appen i Shopify Admin
-        if (window.opener) {
-          // Vi är i en popup - stäng den och ladda om parent
-          window.opener.location.href = "https://admin.shopify.com/store/${shopName}/apps/blixt-delivery${redirectTarget}";
-          window.close();
-        } else {
-          // Inte en popup - vanlig redirect
-          window.location.href = "https://admin.shopify.com/store/${shopName}/apps/blixt-delivery${redirectTarget}";
-        }
-      </script>
-    </body>
-  </html>
-`);
+  // Sätt headers som tillåter iframe embedding
+  res.setHeader(
+    'Content-Security-Policy',
+    `frame-ancestors https://${shop} https://admin.shopify.com`
+  );
+
+  return res.redirect(redirectUrl);
 }
