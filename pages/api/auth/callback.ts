@@ -18,40 +18,82 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log("📥 Full query:", req.query);
   console.log("📥 Full URL:", req.url);
 
-  const { shop, code, host } = req.query;
+  const { shop, code, host, embedded, state } = req.query;
 
   if (!shop || !code || !host) {
     console.error("❌ Missing params:", { shop: !!shop, code: !!code, host: !!host });
     return res.status(400).send("Missing query params");
   }
 
-  console.log("✅ All params present");
-// ✅ LÄGG TILL HÄR - Kolla om session redan finns
-const { data: existingSession } = await supabase
-  .from("shopify_sessions")
-  .select("access_token")
-  .eq("shop", shop.toString().toLowerCase())
-  .maybeSingle();
+  // ✅ BRYT UT UR IFRAME OM EMBEDDED
+  if (embedded === "1") {
+    console.log("🔄 Breaking out of iframe...");
+    const callbackUrl = `${process.env.SHOPIFY_APP_URL}/api/auth/callback?code=${code}&shop=${shop}&host=${host}&state=${state || ""}`;
+    
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <script src="https://cdn.shopify.com/shopifycloud/app-bridge@3/app-bridge.js"></script>
+        </head>
+        <body>
+          <p>Redirecting...</p>
+          <script>
+            (function() {
+              function doRedirect() {
+                if (!window.AppBridge) {
+                  setTimeout(doRedirect, 100);
+                  return;
+                }
+                try {
+                  var app = window.AppBridge.createApp({
+                    apiKey: "${process.env.SHOPIFY_API_KEY}",
+                    host: "${host}",
+                  });
+                  var redirect = window.AppBridge.actions.Redirect.create(app);
+                  redirect.dispatch(window.AppBridge.actions.Redirect.Action.REMOTE, "${callbackUrl}");
+                } catch (err) {
+                  console.error("App Bridge error:", err);
+                  window.top.location.href = "${callbackUrl}";
+                }
+              }
+              doRedirect();
+            })();
+          </script>
+        </body>
+      </html>
+    `);
+  }
 
-if (existingSession?.access_token) {
-  console.log("✅ Session finns redan - skippar token exchange");
-  
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("shop")
+  console.log("✅ All params present, not in iframe");
+
+  // ✅ KOLLA OM SESSION REDAN FINNS
+  const { data: existingSession } = await supabase
+    .from("shopify_sessions")
+    .select("access_token")
     .eq("shop", shop.toString().toLowerCase())
     .maybeSingle();
 
-  const redirectTarget = profile
-    ? `/?shop=${shop}&host=${host}`
-    : `/onboarding?shop=${shop}&host=${host}`;
+  if (existingSession?.access_token) {
+    console.log("✅ Session finns redan - skippar token exchange");
+    
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("shop")
+      .eq("shop", shop.toString().toLowerCase())
+      .maybeSingle();
 
-  console.log("➡️ Redirect (existing session):", redirectTarget);
+    const redirectTarget = profile
+      ? `/?shop=${shop}&host=${host}`
+      : `/onboarding?shop=${shop}&host=${host}`;
 
-  return res.redirect(`https://admin.shopify.com/store/${shop.toString().replace('.myshopify.com', '')}/apps/blixt-delivery${redirectTarget}`);
-}
+    console.log("➡️ Redirect (existing session):", redirectTarget);
 
-console.log("✅ All params present");
+    // Redirect tillbaka till Shopify Admin med appen
+    const shopName = shop.toString().replace('.myshopify.com', '');
+    return res.redirect(`https://admin.shopify.com/store/${shopName}/apps/blixt-delivery${redirectTarget}`);
+  }
+
   // ---- EXCHANGE TEMP CODE FOR ACCESS TOKEN ----
   console.log("🔄 Exchanging code for access_token...");
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
@@ -83,7 +125,7 @@ console.log("✅ All params present");
     shop: shop.toString().toLowerCase(),
     host: host.toString(),
     access_token: accessToken,
-    session: JSON.stringify({ shop, host, accessToken }), // Lägg till session field
+    session: JSON.stringify({ shop, host, accessToken }),
   };
 
   console.log("📦 Data to insert:", {
@@ -145,33 +187,9 @@ console.log("✅ All params present");
     console.error("❌ CarrierService error:", err);
   }
 
-  // ---- REDIRECT (för embedded app) ----
-const shopName = shop.toString().replace('.myshopify.com', '');
-
-res.send(`
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <script 
-        data-api-key="${process.env.SHOPIFY_API_KEY}"
-        src="https://cdn.shopify.com/shopifycloud/app-bridge.js"
-      ></script>
-    </head>
-    <body>
-      <script>
-        var AppBridge = window['app-bridge'];
-        var createApp = AppBridge.createApp;
-        var Redirect = AppBridge.actions.Redirect;
-        
-        var app = createApp({
-          apiKey: "${process.env.SHOPIFY_API_KEY}",
-          host: "${host}",
-        });
-        
-        var redirect = Redirect.create(app);
-        redirect.dispatch(Redirect.Action.APP, "${redirectTarget}");
-      </script>
-    </body>
-  </html>
-`);
+  // ---- REDIRECT TILLBAKA TILL SHOPIFY ADMIN ----
+  const shopName = shop.toString().replace('.myshopify.com', '');
+  const redirectUrl = `https://admin.shopify.com/store/${shopName}/apps/blixt-delivery${redirectTarget}`;
+  console.log("➡️ Final redirect to:", redirectUrl);
+  return res.redirect(redirectUrl);
 }
