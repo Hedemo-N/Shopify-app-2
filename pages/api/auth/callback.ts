@@ -26,7 +26,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   console.log("✅ All params present");
+// ✅ LÄGG TILL HÄR - Kolla om session redan finns
+const { data: existingSession } = await supabase
+  .from("shopify_sessions")
+  .select("access_token")
+  .eq("shop", shop.toString().toLowerCase())
+  .maybeSingle();
 
+if (existingSession?.access_token) {
+  console.log("✅ Session finns redan - skippar token exchange");
+  
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("shop")
+    .eq("shop", shop.toString().toLowerCase())
+    .maybeSingle();
+
+  const redirectTarget = profile
+    ? `/?shop=${shop}&host=${host}`
+    : `/onboarding?shop=${shop}&host=${host}`;
+
+  console.log("➡️ Redirect (existing session):", redirectTarget);
+
+  return res.redirect(`https://admin.shopify.com/store/${shop.toString().replace('.myshopify.com', '')}/apps/blixt-delivery${redirectTarget}`);
+}
+
+console.log("✅ All params present");
   // ---- EXCHANGE TEMP CODE FOR ACCESS TOKEN ----
   console.log("🔄 Exchanging code for access_token...");
   const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
@@ -120,29 +145,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("❌ CarrierService error:", err);
   }
 
-  // ---- EMBEDDED REDIRECT ----
-  res.send(`
-    <html>
-      <head>
-        <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-      </head>
-      <body>
-        <script>
-          console.log("🔄 Callback redirect executing...");
-          const AppBridge = window['app-bridge'];
-          const Redirect = AppBridge.actions.Redirect;
-
-          const app = AppBridge.createApp({
-            apiKey: "${process.env.SHOPIFY_API_KEY}",
-            host: "${host}"
-          });
-
-          Redirect.create(app).dispatch(
-            Redirect.Action.APP,
-            "${redirectTarget}"
-          );
-        </script>
-      </body>
-    </html>
-  `);
+  // ---- REDIRECT ----
+  const shopName = shop.toString().replace('.myshopify.com', '');
+  const redirectUrl = `https://admin.shopify.com/store/${shopName}/apps/blixt-delivery${redirectTarget}`;
+  console.log("➡️ Final redirect to:", redirectUrl);
+  return res.redirect(redirectUrl);
 }
