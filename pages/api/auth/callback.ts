@@ -2,6 +2,7 @@ import "@shopify/shopify-api/adapters/node";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../../frontend/lib/supabaseClient";
 import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
+import { randomUUID } from "crypto";
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_API_KEY!,
@@ -53,6 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log("💾 Attempting to save to shopify_sessions...");
   
   const dataToInsert = {
+    id: randomUUID(),
     shop: shop.toString().toLowerCase(),
     host: host.toString(),
     access_token: accessToken,
