@@ -47,26 +47,35 @@ export default function SettingsPage({ shop }: { shop: string }) {
     sunday: "",
   });
 
-  // Lägg till denna funktion i SettingsPage komponenten
 const handleRegisterWebhooks = useCallback(async () => {
-  const token = await getSessionToken(app);
+  console.log("🔄 Starting webhook registration...");
   
-  const res = await fetch("/api/register-webhooks", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ shop }),
-  });
+  try {
+    const token = await getSessionToken(app);
+    console.log("✅ Got session token");
+    
+    const res = await fetch("/api/register-webhooks", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ shop }),
+    });
 
-  const data = await res.json();
-  
-  if (res.ok) {
-    alert("Webhooks registrerade! ✅");
-    console.log("Webhook results:", data);
-  } else {
-    alert("Fel vid registrering av webhooks: " + JSON.stringify(data));
+    console.log("📡 Response status:", res.status);
+    
+    const data = await res.json();
+    console.log("📦 Response data:", data);
+    
+    if (res.ok) {
+      alert("Webhooks registrerade! ✅\n\n" + JSON.stringify(data.results, null, 2));
+    } else {
+      alert("Fel vid registrering av webhooks:\n\n" + JSON.stringify(data, null, 2));
+    }
+  } catch (err) {
+    console.error("❌ Error:", err);
+    alert("Ett fel uppstod: " + String(err));
   }
 }, [shop, app]);
 
