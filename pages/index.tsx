@@ -303,7 +303,7 @@ export default function SettingsPage({ shop }: { shop: string }) {
   );
 }
 
-// ✅ LÄGG TILL DETTA - SSR check om profil finns
+// ✅ SSR check om session och profil finns
 export const getServerSideProps: GetServerSideProps = async ({ query }) => {
   const shop = typeof query.shop === "string" ? query.shop : null;
   const host = typeof query.host === "string" ? query.host : null;
@@ -321,17 +321,35 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
     };
   }
 
-  // ✅ KOLLA OM PROFIL FINNS I SUPABASE
-  console.log("🔍 Kollar om profil finns för shop:", shop);
+  // 1️⃣ Kolla om vi har en giltig session
+  console.log("🔍 Kollar om session finns för shop:", shop);
+  
+  const { data: session, error: sessionError } = await supabase
+    .from("shopify_sessions")
+    .select("access_token")
+    .eq("shop", shop.toLowerCase())
+    .maybeSingle();
 
-  const { data: profile, error } = await supabase
+  console.log("📦 Session result:", { session, sessionError });
+
+  // Om ingen session finns → starta OAuth
+  if (!session?.access_token) {
+    console.log("⚠️ Ingen session - redirectar till /api/auth");
+    const authUrl = `/api/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ""}`;
+    return { redirect: { destination: authUrl, permanent: false } };
+  }
+
+  console.log("✅ Session finns - kollar profil...");
+
+  // 2️⃣ Kolla om profil finns i Supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("_id")
     .eq("shop", shop.toLowerCase())
     .maybeSingle();
 
-  if (error) {
-    console.error("❌ Supabase error:", error);
+  if (profileError) {
+    console.error("❌ Supabase profile error:", profileError);
   }
 
   if (!profile) {

@@ -9,7 +9,7 @@ embedded = true
 [access_scopes]
 scopes = "read_shipping,write_shipping,read_fulfillments,write_fulfillments,read_locations,read_orders"
 optional_scopes = []
-use_legacy_install_flow = true
+use_legacy_install_flow = false
 
 [auth]
 # Alla redirect URLs ska ligga här
