@@ -145,9 +145,33 @@ console.log("✅ All params present");
     console.error("❌ CarrierService error:", err);
   }
 
-  // ---- REDIRECT ----
-  const shopName = shop.toString().replace('.myshopify.com', '');
-  const redirectUrl = `https://admin.shopify.com/store/${shopName}/apps/blixt-delivery${redirectTarget}`;
-  console.log("➡️ Final redirect to:", redirectUrl);
-  return res.redirect(redirectUrl);
+  // ---- REDIRECT (för embedded app) ----
+const shopName = shop.toString().replace('.myshopify.com', '');
+
+res.send(`
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <script 
+        data-api-key="${process.env.SHOPIFY_API_KEY}"
+        src="https://cdn.shopify.com/shopifycloud/app-bridge.js"
+      ></script>
+    </head>
+    <body>
+      <script>
+        var AppBridge = window['app-bridge'];
+        var createApp = AppBridge.createApp;
+        var Redirect = AppBridge.actions.Redirect;
+        
+        var app = createApp({
+          apiKey: "${process.env.SHOPIFY_API_KEY}",
+          host: "${host}",
+        });
+        
+        var redirect = Redirect.create(app);
+        redirect.dispatch(Redirect.Action.APP, "${redirectTarget}");
+      </script>
+    </body>
+  </html>
+`);
 }
