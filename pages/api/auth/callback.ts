@@ -187,9 +187,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("❌ CarrierService error:", err);
   }
 
-  // ---- REDIRECT TILLBAKA TILL SHOPIFY ADMIN ----
-  const shopName = shop.toString().replace('.myshopify.com', '');
-  const redirectUrl = `https://admin.shopify.com/store/${shopName}/apps/blixt-delivery${redirectTarget}`;
-  console.log("➡️ Final redirect to:", redirectUrl);
-  return res.redirect(redirectUrl);
+// ---- REDIRECT EFTER OAUTH ----
+const shopName = shop.toString().replace('.myshopify.com', '');
+
+res.send(`
+  <!DOCTYPE html>
+  <html>
+    <head></head>
+    <body>
+      <p>Installation klar! Omdirigerar...</p>
+      <script>
+        // Stäng popup och öppna appen i Shopify Admin
+        if (window.opener) {
+          // Vi är i en popup - stäng den och ladda om parent
+          window.opener.location.href = "https://admin.shopify.com/store/${shopName}/apps/blixt-delivery${redirectTarget}";
+          window.close();
+        } else {
+          // Inte en popup - vanlig redirect
+          window.location.href = "https://admin.shopify.com/store/${shopName}/apps/blixt-delivery${redirectTarget}";
+        }
+      </script>
+    </body>
+  </html>
+`);
 }
