@@ -47,6 +47,29 @@ export default function SettingsPage({ shop }: { shop: string }) {
     sunday: "",
   });
 
+  // Lägg till denna funktion i SettingsPage komponenten
+const handleRegisterWebhooks = useCallback(async () => {
+  const token = await getSessionToken(app);
+  
+  const res = await fetch("/api/register-webhooks", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ shop }),
+  });
+
+  const data = await res.json();
+  
+  if (res.ok) {
+    alert("Webhooks registrerade! ✅");
+    console.log("Webhook results:", data);
+  } else {
+    alert("Fel vid registrering av webhooks: " + JSON.stringify(data));
+  }
+}, [shop, app]);
+
   // --- Load settings ---
   useEffect(() => {
     if (!router.isReady || !app) return;
@@ -293,7 +316,9 @@ export default function SettingsPage({ shop }: { shop: string }) {
             value={form.Butiksadress}
             onChange={handleChange("Butiksadress")}
           />
-
+<Button onClick={handleRegisterWebhooks}>
+  Registrera Webhooks
+</Button>
           <Button variant="primary" onClick={handleSave}>
             Spara inställningar
           </Button>
