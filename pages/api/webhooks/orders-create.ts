@@ -135,17 +135,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ---- Hämta butik från shopify_shops ----
     const { data: shopRow, error: shopError } = await supabase
       .from("profiles")
-      .select("id, user_id, butiksemail")
+      .select("_id, Butiksadress, Butiksemail")
       .eq("shop", shopDomain?.toLowerCase())
       .single();
 
     if (shopError || !shopRow) {
       console.warn("⚠️ Kunde inte hitta butik i shopify_shops för domän:", shopDomain);
     }
-
-    const userId = shopRow?.user_id ?? null;
-    console.log("🔗 Kopplad user_id från shopify_shops:", userId);
-
+console.log("🔗 Kopplad profil:", shopRow?._id);
     // ---- Bestäm leveranstyp ----
     const shippingCode = order.shipping_lines?.[0]?.code ?? "";
     let orderType = "hemleverans";
@@ -198,7 +195,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             order.phone ||
             "",
           custom_field: order.note ?? "",
-          user_id: shopRow?.id,
+          user_id: shopRow?._id,
           ordercreatedtime: new Date().toISOString(),
           numberofkollin: order.line_items?.length ?? 1,
           status: "kommande",
@@ -241,26 +238,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     savedOrder = updatedOrder;
 
-    // ---- Kurirtilldelning (hemleverans) ----
-    if (savedOrder.order_type === "hemleverans") {
-      const { data: couriers, error: courierError } = await supabase
-        .from("couriers")
-        .select("user_id, last_eta")
-        .eq("aktiv", "aktiv")
-        .eq("leveranstyp", "hemleverans");
+  // ---- Kurirtilldelning (hemleverans) ----
+if (savedOrder.order_type === "hemleverans") {
+  const { data: couriers, error: courierError } = await supabase
+    .from("couriers")
+    .select("user_id, last_eta")
+    .eq("aktiv", "aktiv")
+    .eq("leveranstyp", "hemleverans");
 
-      if (!couriers || courierError) {
-        console.warn("⚠️ Inga aktiva kurirer tillgängliga för hemleverans.");
-      } else {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("Butiksadress")
-          .eq("_id", userId)
-          .single();
-
-        const butikensAdress = profile?.Butiksadress;
-        let matchedCourier = null;
-
+  if (!couriers || courierError) {
+    console.warn("⚠️ Inga aktiva kurirer tillgängliga för hemleverans.");
+  } else {
+    const butikensAdress = shopRow?.Butiksadress;  // <-- Använd direkt från shopRow
+    let matchedCourier = null;
+    
+    
         // Match med samma butiksadress
         for (const courier of couriers) {
           const { data: courierOrders } = await supabase
@@ -333,7 +325,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq("id", savedOrder.id);
 
       // ---- Skicka email ----
-      const shopEmail = shopRow?.butiksemail;
+      const shopEmail = shopRow?.Butiksemail;
 
       const emailPayload = {
         to: shopEmail,
