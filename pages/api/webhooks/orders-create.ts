@@ -20,19 +20,26 @@ function buffer(req: NextApiRequest): Promise<Buffer> {
   });
 }
 
-// ---- PDF generator (oförändrad logik) ----
+// ---- PDF generator ----
 export async function generateLabelPDF(order: any): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([300, 400]);
   const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   const pageWidth = 300;
-  const logoUrl = `${process.env.SHOPIFY_APP_URL}/logo.png`;
-const logoResponse = await fetch(logoUrl);
-const logoBytes = Buffer.from(await logoResponse.arrayBuffer());
-  const logoImage = await pdfDoc.embedPng(logoBytes);
-  const logoDims = logoImage.scale(0.18);
+  const pageHeight = 400;
 
+  // Hämta logo
+  const logoUrl = `${process.env.SHOPIFY_APP_URL}/logo.png`;
+  const logoResponse = await fetch(logoUrl);
+  const logoBytes = Buffer.from(await logoResponse.arrayBuffer());
+  const logoImage = await pdfDoc.embedPng(logoBytes);
+  
+  // Använd fast storlek för loggan istället för scale
+  const logoWidth = 50;
+  const logoHeight = 50;
+
+  // QR-kod
   const qrDataUrl = await QRCode.toDataURL(order.order_id);
   const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
   const qrBytes = Uint8Array.from(Buffer.from(qrBase64, "base64"));
@@ -54,51 +61,52 @@ const logoBytes = Buffer.from(await logoResponse.arrayBuffer());
     page.drawText(`Blixt Delivery`, { x: 20, y: 130, size: 25 });
 
     page.drawImage(logoImage, {
-      x: (pageWidth - logoDims.width) / 2, 
-      y: 100,
-      width: logoDims.width,
-      height: logoDims.height,
+      x: (pageWidth - logoWidth) / 2,
+      y: 60,
+      width: logoWidth,
+      height: logoHeight,
     });
 
     page.drawImage(qrImage, {
-      x: pageWidth - 200,
+      x: pageWidth - 110,
       y: 15,
       width: 100,
       height: 100,
     });
   } else {
     page.drawText("Ombud/Paketbox", { x: 20, y: 350, size: 20, font });
-    page.drawText(`${order.ombud_name}`, { x: 20, y: 310, size: 20, font });
+    page.drawText(`${order.ombud_name || ""}`, { x: 20, y: 310, size: 20, font });
 
     page.drawText("Order ID:", { x: 20, y: 275, size: 20, font });
     page.drawText(`${order.order_id}`, { x: 20, y: 255, size: 20, font });
 
     page.drawText(`Namn: ${order.name}`, { x: 20, y: 235, size: 15 });
-    page.drawText(`Adress: ${order.ombud_adress}`, { x: 20, y: 210, size: 15 });
+    page.drawText(`Adress: ${order.ombud_adress || ""}`, { x: 20, y: 210, size: 15 });
     page.drawText(`Telefon: ${order.phone}`, { x: 20, y: 160, size: 15 });
     page.drawText(`Leverans med:`, { x: 20, y: 135, size: 15 });
     page.drawText(`Blixt Delivery`, { x: 20, y: 110, size: 25 });
 
     page.drawImage(logoImage, {
-      x: (pageWidth - logoDims.width) / 2, 
-      y: 100,
-      width: logoDims.width,
-      height: logoDims.height,
+      x: (pageWidth - logoWidth) / 2,
+      y: 60,
+      width: logoWidth,
+      height: logoHeight,
     });
 
     page.drawImage(qrImage, {
-      x: pageWidth - 200,
+      x: pageWidth - 100,
       y: 15,
       width: 80,
       height: 80,
     });
   }
 
+  // Rita ram runt hela etiketten
   page.drawRectangle({
     x: 10,
     y: 10,
     width: pageWidth - 20,
-    height: 380,
+    height: pageHeight - 20,
     borderColor: rgb(0, 0, 0),
     borderWidth: 4,
   });
@@ -132,7 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const shopDomain = req.headers["x-shopify-shop-domain"] as string;
     console.log("RAW SHOP DOMAIN HEADER →", shopDomain);
 
-    // ---- Hämta butik från shopify_shops ----
+    // ---- Hämta butik från profiles ----
     const { data: shopRow, error: shopError } = await supabase
       .from("profiles")
       .select("_id, Butiksadress, Butiksemail")
@@ -140,9 +148,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .single();
 
     if (shopError || !shopRow) {
-      console.warn("⚠️ Kunde inte hitta butik i shopify_shops för domän:", shopDomain);
+      console.warn("⚠️ Kunde inte hitta butik i profiles för domän:", shopDomain);
     }
-console.log("🔗 Kopplad profil:", shopRow?._id);
+    console.log("🔗 Kopplad profil:", shopRow?._id);
+
     // ---- Bestäm leveranstyp ----
     const shippingCode = order.shipping_lines?.[0]?.code ?? "";
     let orderType = "hemleverans";
@@ -238,21 +247,20 @@ console.log("🔗 Kopplad profil:", shopRow?._id);
 
     savedOrder = updatedOrder;
 
-  // ---- Kurirtilldelning (hemleverans) ----
-if (savedOrder.order_type === "hemleverans") {
-  const { data: couriers, error: courierError } = await supabase
-    .from("couriers")
-    .select("user_id, last_eta")
-    .eq("aktiv", "aktiv")
-    .eq("leveranstyp", "hemleverans");
+    // ---- Kurirtilldelning (hemleverans) ----
+    if (savedOrder.order_type === "hemleverans") {
+      const { data: couriers, error: courierError } = await supabase
+        .from("couriers")
+        .select("user_id, last_eta")
+        .eq("aktiv", "aktiv")
+        .eq("leveranstyp", "hemleverans");
 
-  if (!couriers || courierError) {
-    console.warn("⚠️ Inga aktiva kurirer tillgängliga för hemleverans.");
-  } else {
-    const butikensAdress = shopRow?.Butiksadress;  // <-- Använd direkt från shopRow
-    let matchedCourier = null;
-    
-    
+      if (!couriers || courierError) {
+        console.warn("⚠️ Inga aktiva kurirer tillgängliga för hemleverans.");
+      } else {
+        const butikensAdress = shopRow?.Butiksadress;
+        let matchedCourier = null;
+
         // Match med samma butiksadress
         for (const courier of couriers) {
           const { data: courierOrders } = await supabase
@@ -342,7 +350,7 @@ if (savedOrder.order_type === "hemleverans") {
       if (shopEmail) {
         try {
           const emailRes = await fetch(
-            "https://shopify-app-2-delta.vercel.app/api/webhooks/send-label-email",
+            `${process.env.SHOPIFY_APP_URL}/api/webhooks/send-label-email`,
             {
               method: "POST",
               headers: {
