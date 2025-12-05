@@ -35,7 +35,7 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
   const logoBytes = Buffer.from(await logoResponse.arrayBuffer());
   const logoImage = await pdfDoc.embedPng(logoBytes);
   
-  // Använd fast storlek för loggan istället för scale
+  // Använd fast storlek för loggan
   const logoWidth = 50;
   const logoHeight = 50;
 
@@ -60,15 +60,17 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
     page.drawText(`Leverans med:`, { x: 20, y: 170, size: 15 });
     page.drawText(`Blixt Delivery`, { x: 20, y: 130, size: 25 });
 
+    // Logo - till höger uppe
     page.drawImage(logoImage, {
-      x: (pageWidth - logoWidth) / 2,
-      y: 60,
+      x: 200,
+      y: 100,
       width: logoWidth,
       height: logoHeight,
     });
 
+    // QR-kod - centrerad längst ner
     page.drawImage(qrImage, {
-      x: pageWidth - 110,
+      x: (pageWidth - 100) / 2,
       y: 15,
       width: 100,
       height: 100,
@@ -86,15 +88,17 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
     page.drawText(`Leverans med:`, { x: 20, y: 135, size: 15 });
     page.drawText(`Blixt Delivery`, { x: 20, y: 110, size: 25 });
 
+    // Logo - till höger uppe
     page.drawImage(logoImage, {
-      x: (pageWidth - logoWidth) / 2,
-      y: 60,
+      x: 200,
+      y: 100,
       width: logoWidth,
       height: logoHeight,
     });
 
+    // QR-kod - centrerad längst ner
     page.drawImage(qrImage, {
-      x: pageWidth - 100,
+      x: (pageWidth - 80) / 2,
       y: 15,
       width: 80,
       height: 80,
