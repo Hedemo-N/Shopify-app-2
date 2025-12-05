@@ -54,7 +54,7 @@ const logoBytes = Buffer.from(await logoResponse.arrayBuffer());
     page.drawText(`Blixt Delivery`, { x: 20, y: 130, size: 25 });
 
     page.drawImage(logoImage, {
-      x: (480 - logoDims.width) / 2,
+      x: (pageWidth - logoDims.width) / 2, 
       y: 100,
       width: logoDims.width,
       height: logoDims.height,
@@ -80,7 +80,7 @@ const logoBytes = Buffer.from(await logoResponse.arrayBuffer());
     page.drawText(`Blixt Delivery`, { x: 20, y: 110, size: 25 });
 
     page.drawImage(logoImage, {
-      x: (480 - logoDims.width) / 2,
+      x: (pageWidth - logoDims.width) / 2, 
       y: 100,
       width: logoDims.width,
       height: logoDims.height,
