@@ -3,8 +3,7 @@ import crypto from "crypto";
 import { supabase } from "../../../frontend/lib/supabaseClient";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
-import { readFile } from "fs/promises";
-import path from "path";
+
 
 export const config = {
   api: {
@@ -28,8 +27,9 @@ export async function generateLabelPDF(order: any): Promise<Uint8Array> {
   const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   const pageWidth = 300;
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
-  const logoBytes = await readFile(logoPath);
+  const logoUrl = `${process.env.SHOPIFY_APP_URL}/logo.png`;
+const logoResponse = await fetch(logoUrl);
+const logoBytes = Buffer.from(await logoResponse.arrayBuffer());
   const logoImage = await pdfDoc.embedPng(logoBytes);
   const logoDims = logoImage.scale(0.18);
 
@@ -136,7 +136,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: shopRow, error: shopError } = await supabase
       .from("profiles")
       .select("id, user_id, butiksemail")
-      .eq("shop", shopDomain)
+      .eq("shop", shopDomain?.toLowerCase())
       .single();
 
     if (shopError || !shopRow) {
