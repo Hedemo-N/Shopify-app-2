@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "frontend/lib/supabaseClient";
+import crypto from "crypto";
 
 export const config = {
   api: {
@@ -43,17 +44,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const accessToken = session.access_token;
   console.log("🗝️ Using access token:", accessToken);
 
-  // ===== Let's test that token with Shopify API =====
+  // ===== Test token =====
   try {
-    const testResponse = await fetch(
-      `https://${shop}/admin/api/2025-10/shop.json`,
-      {
-        headers: {
-          "X-Shopify-Access-Token": accessToken,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const testResponse = await fetch(`https://${shop}/admin/api/2025-10/shop.json`, {
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-Type": "application/json",
+      },
+    });
 
     console.log("➡️ Shopify /shop.json status:", testResponse.status);
     const testBody = await testResponse.text();
@@ -62,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("❌ Failed test call to Shopify /shop.json:", err);
   }
 
-  // ===== Register webhooks one by one =====
+  // ===== Register webhooks =====
   const webhooksToRegister = [
     {
       topic: "orders/create",
