@@ -258,82 +258,93 @@ export default async function handler(
     // -----------------------------------------------------
     // 6. ORÖRD KVÄLL
     // -----------------------------------------------------
-    rates.push({
-      service_name: "🌱BLIXT Hemleverans kväll 17–22🌱",
-      service_code: "blixt_home_evening",
-      total_price: String(homeEvening),
-      currency: "SEK",
-      description: "Leverans ikväll om du beställer i tid",
-      min_delivery_date: slotStart.toISOString(),
-      max_delivery_date: slotEnd.toISOString(),
-    });
+   const cutoffEvening = shop?.cutoff_time_evening || ""; 
+const cutoffText = cutoffEvening ? `Beställer du innan ${cutoffEvening} levereras varan samma kväll` : "Leverans ikväll om du beställer i tid";
+
+rates.push({
+  service_name: "🌱BLIXT Hemleverans kväll 17–22🌱",
+  service_code: "blixt_home_evening",
+  total_price: String(homeEvening),
+  currency: "SEK",
+  description: cutoffText,
+  min_delivery_date: slotStart.toISOString(),
+  max_delivery_date: slotEnd.toISOString(),
+});
+
 
     // -----------------------------------------------------
     // 7. ORÖRD OMBUD
     // -----------------------------------------------------
-    if (boxCount > 0) {
-      console.log("📦 Searching for ombud…");
+   if (boxCount > 0) {
+  console.log("📦 Searching for ombud…");
 
-      const coords = await getCoordinatesFromMapbox(fullAddress);
+  const coords = await getCoordinatesFromMapbox(fullAddress);
 
-      if (coords) {
-        const { data: allBoxes } = await supabase
-          .from("paketskåp_ombud")
-          .select("id, ombud_name, ombud_adress, ombud_telefon, lat_long");
+  // ⭐ Ny cutoff-text
+  const cutoffOmbud = shop?.cutoff_time_ombud || "";
+  const cutoffOmbudText = cutoffOmbud
+    ? `Beställer du innan ${cutoffOmbud} levereras varan till ombud samma dag`
+    : "Leverans till ombud samma dag";
 
-        if (allBoxes?.length) {
-          const parseLatLng = (str: string) => {
-            const [lat, lng] = str.split(",").map(Number);
-            return { latitude: lat, longitude: lng };
+  if (coords) {
+    const { data: allBoxes } = await supabase
+      .from("paketskåp_ombud")
+      .select("id, ombud_name, ombud_adress, ombud_telefon, lat_long");
+
+    if (allBoxes?.length) {
+      const parseLatLng = (str: string) => {
+        const [lat, lng] = str.split(",").map(Number);
+        return { latitude: lat, longitude: lng };
+      };
+
+      const toDistance = (a: number, b: number, c: number, d: number) => {
+        const R = 6371e3;
+        const φ1 = (a * Math.PI) / 180;
+        const φ2 = (c * Math.PI) / 180;
+        const Δφ = ((c - a) * Math.PI) / 180;
+        const Δλ = ((d - b) * Math.PI) / 180;
+
+        const sh =
+          Math.sin(Δφ / 2) ** 2 +
+          Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+
+        return R * 2 * Math.atan2(Math.sqrt(sh), Math.sqrt(1 - sh));
+      };
+
+      const closest = allBoxes
+        .map((box) => {
+          const { latitude, longitude } = parseLatLng(box.lat_long);
+          return {
+            ...box,
+            distance: toDistance(
+              coords.latitude,
+              coords.longitude,
+              latitude,
+              longitude
+            ),
           };
+        })
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, boxCount);
 
-          const toDistance = (a: number, b: number, c: number, d: number) => {
-            const R = 6371e3;
-            const φ1 = (a * Math.PI) / 180;
-            const φ2 = (c * Math.PI) / 180;
-            const Δφ = ((c - a) * Math.PI) / 180;
-            const Δλ = ((d - b) * Math.PI) / 180;
+      closest.forEach((box, idx) => {
+        const dt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
 
-            const sh =
-              Math.sin(Δφ / 2) ** 2 +
-              Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-
-            return R * 2 * Math.atan2(Math.sqrt(sh), Math.sqrt(1 - sh));
-          };
-
-          const closest = allBoxes
-            .map((box) => {
-              const { latitude, longitude } = parseLatLng(box.lat_long);
-              return {
-                ...box,
-                distance: toDistance(
-                  coords.latitude,
-                  coords.longitude,
-                  latitude,
-                  longitude
-                ),
-              };
-            })
-            .sort((a, b) => a.distance - b.distance)
-            .slice(0, boxCount);
-
-          closest.forEach((box, idx) => {
-            const dt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-            rates.push({
-              service_name: `📦BLIXT Ombud ${idx + 1} ${box.ombud_name} (${Math.round(
-                box.distance
-              )} m)`,
-              service_code: `blixt_box_${box.id}`,
-              total_price: String(ombud),
-              currency: "SEK",
-              description: "Leverans till paketbox",
-              min_delivery_date: dt.toISOString(),
-              max_delivery_date: dt.toISOString(),
-            });
-          });
-        }
-      }
+        rates.push({
+          service_name: `📦BLIXT Ombud ${idx + 1} ${box.ombud_name} (${Math.round(
+            box.distance
+          )} m)`,
+          service_code: `blixt_box_${box.id}`,
+          total_price: String(ombud),
+          currency: "SEK",
+          description: cutoffOmbudText,  // ⭐ NY TEXT HÄR
+          min_delivery_date: dt.toISOString(),
+          max_delivery_date: dt.toISOString(),
+        });
+      });
     }
+  }
+}
 
     // -----------------------------------------------------
     // 8. RETURNERA
