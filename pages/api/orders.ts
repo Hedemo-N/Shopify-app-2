@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           "Content-Type": "application/json",
         },
       }
-    );
+    ); 
 
     if (!response.ok) {
       const text = await response.text();
